@@ -18,7 +18,14 @@ For each challenge:
 - PARTIAL: Partially valid — note the nuance
 
 Then produce verified_findings: a crisp Markdown summary of what we KNOW with high confidence.
-Assign confidence_score (0–100) based on data quality and challenge resolutions:
+
+CONFIDENCE CALCULATION RULE:
+Compute confidence using ONLY successful data sources (status: ok).
+Apply penalties: subtract 5 points per timed-out step (status: timeout), max -15 total.
+Do NOT penalize successful steps because other steps timed out — that is a tool failure, not a data quality issue.
+Example: 4 ok steps base 78 + 1 timeout → final: 73.
+
+Confidence scale (before penalties):
 - 80–100: Strong multi-source corroboration, recent data
 - 60–79: Solid but single-source or aging data
 - 40–59: Partial data, notable gaps remain
@@ -37,6 +44,7 @@ async def run_verifier(state: MissionState) -> dict:
     target = state["target"]
     findings = state["raw_findings"]
     challenges = state["challenges"]
+    bd_calls = state["bright_data_calls"]
 
     await ev.emit(mission_id, "verifier", "started", "Resolving challenges and verifying facts…")
     await ev.emit(mission_id, "verifier", "thinking", "Cross-referencing data sources…")
@@ -47,9 +55,19 @@ async def run_verifier(state: MissionState) -> dict:
         max_tokens=2048,
     )
 
+    coverage_lines = [
+        f"- {c['product']} ({c['tool']}): {c.get('status', 'unknown')}, {c['latency_ms']}ms"
+        for c in bd_calls
+    ]
+    timeout_count = sum(1 for c in bd_calls if c.get("status") == "timeout")
+    penalty = min(timeout_count * 5, 15)
+
     human = (
         f"Target: {target}\n\n"
-        f"Research Findings:\n{findings[:5000]}\n\n"
+        f"Research coverage ({len(bd_calls)} Bright Data calls):\n"
+        + "\n".join(coverage_lines)
+        + f"\n\nTimed-out steps: {timeout_count} → apply -{penalty} confidence penalty (max -15)\n\n"
+        f"Research Findings:\n{findings[:4500]}\n\n"
         f"Skeptic Challenges:\n{json.dumps(challenges, indent=2)}"
     )
 

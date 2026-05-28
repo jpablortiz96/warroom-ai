@@ -17,6 +17,7 @@ class BDCall(TypedDict):
     query_or_url: str
     latency_ms: int
     ok: bool
+    status: str  # "ok" | "timeout" | "failed" | "empty"
 
 
 class AgentEvent(TypedDict):

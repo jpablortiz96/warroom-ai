@@ -59,7 +59,7 @@ async def fetch_rendered(
     url: str,
     wait_for_selector: str | None = None,
     screenshot_path: str | None = None,
-    timeout_ms: int = 60_000,
+    timeout_ms: int = 25_000,
 ) -> BrightDataResponse:
     """Navigate to `url` in the Scraping Browser and return the rendered HTML.
 

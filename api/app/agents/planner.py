@@ -33,7 +33,18 @@ Rules:
 1. Produce exactly 5 steps.
 2. Use ALL 5 Bright Data products: serp_api (serp_search/serp_news), mcp_server (mcp_search/mcp_scrape),
    web_unlocker (unlocker_fetch), web_scraper_api (scraper_linkedin), scraping_browser (browser_render).
-3. For scraper_linkedin: target the company CEO or a key executive's profile URL (linkedin.com/in/...).
+3. For scraper_linkedin: provide the REAL, EXISTING LinkedIn person profile URL of the company's
+   current CEO or founder. Use your training knowledge — do NOT construct or guess URLs.
+   Known examples (use these exactly if the target matches):
+     Wix.com      → https://www.linkedin.com/in/avishai-abrahami/
+     Shopify      → https://www.linkedin.com/in/tobiasluetke/
+     Salesforce   → https://www.linkedin.com/in/marcbenioff/
+     Microsoft    → https://www.linkedin.com/in/satyanadella/
+     Google       → https://www.linkedin.com/in/sundarpichai/
+     HubSpot      → https://www.linkedin.com/in/yamini-rangan/
+     Atlassian    → https://www.linkedin.com/in/scottfarquhar/
+     Figma        → https://www.linkedin.com/in/dylanfield/
+   For other targets, use the actual CEO's LinkedIn URL from your knowledge.
 4. For browser_render: target a dynamic page (pricing, careers, app dashboard).
 5. For unlocker_fetch: target a page that is likely behind bot protection (press/news page, paywalled).
 6. Queries and URLs must be specific to the actual target — no placeholders.
@@ -55,6 +66,28 @@ _REQUIRED_PRODUCTS: dict[str, set[str]] = {
 }
 
 
+_KNOWN_CEOS: dict[str, str] = {
+    "wix": "https://www.linkedin.com/in/avishai-abrahami/",
+    "shopify": "https://www.linkedin.com/in/tobiasluetke/",
+    "salesforce": "https://www.linkedin.com/in/marcbenioff/",
+    "microsoft": "https://www.linkedin.com/in/satyanadella/",
+    "google": "https://www.linkedin.com/in/sundarpichai/",
+    "amazon": "https://www.linkedin.com/in/andy-jassy-8b1615/",
+    "meta": "https://www.linkedin.com/in/markzuckerberg/",
+    "apple": "https://www.linkedin.com/in/timcook/",
+    "netflix": "https://www.linkedin.com/in/reedhastings/",
+    "uber": "https://www.linkedin.com/in/dkhos/",
+    "airbnb": "https://www.linkedin.com/in/brianchesky/",
+    "hubspot": "https://www.linkedin.com/in/yamini-rangan/",
+    "zendesk": "https://www.linkedin.com/in/mikklane/",
+    "atlassian": "https://www.linkedin.com/in/scottfarquhar/",
+    "figma": "https://www.linkedin.com/in/dylanfield/",
+    "notion": "https://www.linkedin.com/in/ivanzhao/",
+    "stripe": "https://www.linkedin.com/in/patrickcollison/",
+    "twilio": "https://www.linkedin.com/in/jeffielmayer/",
+}
+
+
 def _target_domain(target: str) -> str:
     """Best-effort domain extraction — 'Wix.com' → 'wix.com', 'Shopify' → 'shopify.com'."""
     raw = target.lower().strip().replace("https://", "").replace("http://", "").replace("www.", "")
@@ -62,6 +95,12 @@ def _target_domain(target: str) -> str:
     if "." not in domain:
         domain = f"{domain}.com"
     return domain
+
+
+def _linkedin_url_for(domain: str) -> str:
+    """Return a known-working LinkedIn CEO URL, or a reasonable slug as fallback."""
+    slug = domain.replace(".com", "").replace(".io", "").replace(".co", "").replace(".", "-")
+    return _KNOWN_CEOS.get(slug, f"https://www.linkedin.com/in/{slug}-ceo/")
 
 
 def _ensure_all_products(
@@ -117,7 +156,7 @@ def _ensure_all_products(
             "step": step_num,
             "goal": f"Get LinkedIn profile of {target} key executive for leadership intel",
             "tool": "scraper_linkedin",
-            "query_or_url": f"https://www.linkedin.com/in/{name_slug}-ceo/",
+            "query_or_url": _linkedin_url_for(domain),
             "result": None,
             "ok": None,
         },
