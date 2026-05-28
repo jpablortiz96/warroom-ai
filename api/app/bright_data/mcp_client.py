@@ -1,67 +1,181 @@
-"""Bright Data primary client: SERP API (Day 1 working) + MCP Server utilities (Day 2).
+"""Bright Data MCP Server — agentic navigation of the live web.
 
-TODO(verify-endpoint): Before running, confirm your SERP zone name in the Bright Data
-dashboard → Proxies & Scraping → SERP API → zone name. Common values: "serp_api",
-"serp_api1". Set BRIGHT_DATA_SERP_ZONE in api/.env to match.
+Transport: stdio via `npx @brightdata/mcp` (same transport Claude Desktop uses).
+           This is the officially supported Python approach.
 
-TODO(verify-response): Bright Data returns organic results under the "organic" key with
-fields "title", "link", and "description". Verified against the API on 2026-05-25; re-check
-if the response shape changes in a future Bright Data release.
+Available tools (from luminati-io/brightdata-mcp):
+  search_engine(query, engine)        — SERP results in JSON/Markdown
+  scrape_as_markdown(url)             — Any page as clean Markdown (bot-protected)
+  scrape_as_html(url)                 — Any page as raw HTML
+  search_engine_batch(queries)        — Up to 10 parallel searches
+  scrape_batch(urls)                  — Up to 10 parallel page fetches
+  web_data_<site>(url)                — 40+ structured extractors (LinkedIn, Crunchbase, etc.)
+  scraping_browser_<action>(...)      — Click, type, navigate, screenshot
+
+Prerequisites: Node.js 18+ (user has Node 24 ✓)
+               npx fetches @brightdata/mcp on first call (~3s), cached after.
+
+Used by: Researcher agent (multi-step agentic navigation, structured site extraction)
 """
 
-import httpx
+import asyncio
+import os
 
+from app.bright_data.base import BrightDataResponse, elapsed_ms, timer
 from app.config import settings
 
-_SERP_ENDPOINT = "https://api.brightdata.com/request"
+# Also re-export search_serp for /missions/hello backward compat.
+from app.bright_data.serp import search_serp  # noqa: F401
 
 
-async def search_serp(query: str, limit: int = 3) -> list[dict]:
-    """Query Bright Data SERP API and return top organic search results.
+def _server_params():
+    """Build StdioServerParameters for the Bright Data MCP server."""
+    from mcp.client.stdio import StdioServerParameters
+
+    env = {
+        **os.environ,
+        "API_TOKEN": settings.bright_data_api_token,
+        "PRO_MODE": "false",
+    }
+    return StdioServerParameters(
+        command="npx",
+        args=["-y", "@brightdata/mcp"],
+        env=env,
+    )
+
+
+async def call_tool(tool_name: str, arguments: dict) -> BrightDataResponse:
+    """Call any Bright Data MCP tool by name via stdio transport.
+
+    Opens a subprocess running `npx @brightdata/mcp`, calls the tool,
+    then closes the subprocess. For bulk research, use MCPSession context
+    manager below to share one subprocess across many calls.
 
     Args:
-        query: Natural-language search query.
-        limit: Maximum number of organic results to return.
-
-    Returns:
-        List of dicts with at minimum a "title" key. May also include "link" and
-        "description" depending on Bright Data response version.
-
-    Raises:
-        httpx.HTTPStatusError: On 4xx/5xx from the API (401, 403, 407 are common).
-        httpx.TimeoutException: If the request exceeds 30 seconds.
+        tool_name: e.g. "search_engine", "scrape_as_markdown", "web_data_linkedin_company_profile"
+        arguments: Tool-specific dict, e.g. {"query": "Wix.com funding", "engine": "google"}
     """
-    encoded = query.replace(" ", "+")
-    # brd_json=1 instructs Bright Data to parse and return structured JSON instead of raw HTML
-    search_url = f"https://www.google.com/search?q={encoded}&brd_json=1&num={limit}"
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            _SERP_ENDPOINT,
-            headers={
-                "Authorization": f"Bearer {settings.bright_data_api_token}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "zone": settings.bright_data_serp_zone,
-                "url": search_url,
-                "format": "raw",
-            },
+    if not settings.bright_data_api_token:
+        return BrightDataResponse(
+            status="error",
+            product="mcp_server",
+            error="BRIGHT_DATA_API_TOKEN not set in api/.env",
         )
-        response.raise_for_status()
-        data = response.json()
 
-    organic: list[dict] = data.get("organic", [])
-    return organic[:limit]
+    try:
+        from mcp import ClientSession
+        from mcp.client.stdio import stdio_client
+    except ImportError:
+        return BrightDataResponse(
+            status="error",
+            product="mcp_server",
+            error="mcp package not installed — run: uv add mcp",
+        )
+
+    start = timer()
+    try:
+        async with stdio_client(_server_params()) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.call_tool(tool_name, arguments)
+                ms = elapsed_ms(start)
+
+                text_parts = [
+                    c.text
+                    for c in (result.content or [])
+                    if hasattr(c, "text") and c.text
+                ]
+                combined = "\n".join(text_parts)
+
+                return BrightDataResponse(
+                    status="ok",
+                    product="mcp_server",
+                    data={"tool": tool_name, "result": combined},
+                    latency_ms=ms,
+                )
+    except Exception as exc:
+        return BrightDataResponse(
+            status="error",
+            product="mcp_server",
+            error=str(exc),
+            latency_ms=elapsed_ms(start),
+        )
 
 
-async def mcp_health() -> dict:
-    """Ping the Bright Data MCP Server to verify connectivity.
+class MCPSession:
+    """Persistent MCP subprocess — reuse across many tool calls in one mission.
 
-    MCP Server URL: https://mcp.brightdata.com/mcp?token=<API_TOKEN>
-    Day 2: Replace with full MCP tool-call client using the MCP protocol.
+    Usage:
+        async with MCPSession() as mcp:
+            r1 = await mcp.call("search_engine", {"query": "..."})
+            r2 = await mcp.call("scrape_as_markdown", {"url": "..."})
     """
-    mcp_url = f"{settings.bright_data_mcp_url}?token={settings.bright_data_api_token}"
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.get(mcp_url)
-        return {"reachable": response.status_code < 500, "status_code": response.status_code}
+
+    def __init__(self):
+        self._ctx = None
+        self._session = None
+
+    async def __aenter__(self):
+        from mcp import ClientSession
+        from mcp.client.stdio import stdio_client
+
+        self._stdio_ctx = stdio_client(_server_params())
+        self._read, self._write = await self._stdio_ctx.__aenter__()
+        self._session_ctx = ClientSession(self._read, self._write)
+        self._session = await self._session_ctx.__aenter__()
+        await self._session.initialize()
+        return self
+
+    async def __aexit__(self, *args):
+        if self._session_ctx:
+            await self._session_ctx.__aexit__(*args)
+        if self._stdio_ctx:
+            await self._stdio_ctx.__aexit__(*args)
+
+    async def call(self, tool_name: str, arguments: dict) -> BrightDataResponse:
+        start = timer()
+        try:
+            result = await self._session.call_tool(tool_name, arguments)
+            ms = elapsed_ms(start)
+            text_parts = [
+                c.text
+                for c in (result.content or [])
+                if hasattr(c, "text") and c.text
+            ]
+            return BrightDataResponse(
+                status="ok",
+                product="mcp_server",
+                data={"tool": tool_name, "result": "\n".join(text_parts)},
+                latency_ms=ms,
+            )
+        except Exception as exc:
+            return BrightDataResponse(
+                status="error",
+                product="mcp_server",
+                error=str(exc),
+                latency_ms=elapsed_ms(start),
+            )
+
+
+# ── Convenience wrappers ──────────────────────────────────────────────────────
+
+async def search(query: str, engine: str = "google") -> BrightDataResponse:
+    return await call_tool("search_engine", {"query": query, "engine": engine})
+
+
+async def scrape_markdown(url: str) -> BrightDataResponse:
+    return await call_tool("scrape_as_markdown", {"url": url})
+
+
+async def scrape_html(url: str) -> BrightDataResponse:
+    return await call_tool("scrape_as_html", {"url": url})
+
+
+async def web_data(site: str, url: str) -> BrightDataResponse:
+    """Call a structured web_data_<site> extractor.
+
+    Args:
+        site: e.g. "linkedin_company_profile", "crunchbase_company", "g2_product"
+        url:  Target URL for the extractor.
+    """
+    return await call_tool(f"web_data_{site}", {"url": url})
