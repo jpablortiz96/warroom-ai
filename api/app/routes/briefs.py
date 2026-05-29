@@ -220,7 +220,7 @@ def _generate_pdf(mission: dict, brief: dict) -> bytes:
         pdf.ln(4)
         pdf.set_font("Courier", "", 7)
         pdf.set_text_color(120, 120, 120)
-        pdf.cell(0, 4, "POWERED BY BRIGHT DATA — INTELLIGENCE SOURCES", ln=True)
+        pdf.cell(0, 4, "POWERED BY BRIGHT DATA - INTELLIGENCE SOURCES", ln=True)
         pdf.ln(2)
         card_w = 32
         bx = 20
