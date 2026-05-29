@@ -166,9 +166,18 @@ export default function Home() {
               </span>
             ))}
           </div>
-          <span className="font-mono text-[10px] text-zinc-800">
-            LangGraph · Claude · Supabase
-          </span>
+          <div className="flex flex-wrap items-center gap-5">
+            <span className="font-mono text-[10px] text-zinc-800">LangGraph · Claude · Supabase</span>
+            <span className="font-mono text-[9px] text-zinc-800">Built for Bright Data Web Data UNLOCKED · May 2026</span>
+            <a
+              href="https://github.com/jpablortiz96/warroom-ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-[9px] text-zinc-800 hover:text-zinc-600 transition-colors"
+            >
+              github.com/jpablortiz96/warroom-ai ↗
+            </a>
+          </div>
         </div>
       </footer>
     </main>

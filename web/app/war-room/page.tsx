@@ -1,6 +1,7 @@
 "use client"
 
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { toast } from "sonner"
 import {
@@ -363,7 +364,7 @@ export default function WarRoomPage() {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-6 pt-10 pb-24">
+      <div className="max-w-5xl mx-auto px-6 pt-10 pb-16">
         {phase !== "setup" ? (
           <ActivePanel
             phase={phase}
@@ -393,6 +394,22 @@ export default function WarRoomPage() {
           />
         )}
       </div>
+      {/* Footer */}
+      <footer className="border-t border-zinc-800/50 px-6 py-4 mt-8">
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3">
+          <span className="font-mono text-[9px] text-zinc-800 tracking-widest">
+            Built for Bright Data Web Data UNLOCKED · May 2026
+          </span>
+          <a
+            href="https://github.com/jpablortiz96/warroom-ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[9px] text-zinc-800 hover:text-zinc-600 transition-colors tracking-widest"
+          >
+            github.com/jpablortiz96/warroom-ai ↗
+          </a>
+        </div>
+      </footer>
     </div>
   )
 }
@@ -432,9 +449,12 @@ function SetupPanel({
           LOCKED GOLDEN PATHS — ONE-TAP DEMO
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {PRESETS.map((p) => (
-            <button
+          {PRESETS.map((p, i) => (
+            <motion.button
               key={p.target}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: i * 0.07 }}
               onClick={() => onPresetDeploy(p.target, p.mission)}
               className="group text-left border border-zinc-700 bg-zinc-900/40 p-5 hover:border-zinc-500 hover:bg-zinc-900/70 transition-all cursor-pointer"
             >
@@ -452,7 +472,7 @@ function SetupPanel({
                 Deploy agents
                 <ChevronRight className="h-3 w-3" />
               </div>
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
@@ -754,7 +774,11 @@ function BDShowcasePanel({ bdDetails, phase }: { bdDetails: BDDetails; phase: Ph
 function AgentRow({ name, state }: { name: AgentName; state: AgentState }) {
   const { status, message } = state
   return (
-    <div className="flex items-center gap-4 px-1 py-1.5">
+    <motion.div
+      className="flex items-center gap-4 px-1 py-1.5"
+      animate={{ opacity: status === "idle" ? 0.4 : 1 }}
+      transition={{ duration: 0.2 }}
+    >
       <div className="w-4 shrink-0 flex justify-center">
         {status === "idle" && (
           <span className="w-1.5 h-1.5 rounded-full bg-zinc-800 block" />
@@ -763,7 +787,9 @@ function AgentRow({ name, state }: { name: AgentName; state: AgentState }) {
           <Loader2 className="h-3.5 w-3.5 text-amber-400 animate-spin" />
         )}
         {status === "complete" && (
-          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+          <motion.div initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400 }}>
+            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+          </motion.div>
         )}
         {status === "failed" && (
           <XCircle className="h-3.5 w-3.5 text-red-500" />
@@ -782,10 +808,19 @@ function AgentRow({ name, state }: { name: AgentName; state: AgentState }) {
       >
         {name.toUpperCase()}
       </span>
-      <span className="font-mono text-[11px] text-zinc-600 truncate">
-        {status === "idle" ? "—" : message}
-      </span>
-    </div>
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={message}
+          initial={{ opacity: 0, x: 4 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="font-mono text-[11px] text-zinc-600 truncate"
+        >
+          {status === "idle" ? "—" : message}
+        </motion.span>
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
