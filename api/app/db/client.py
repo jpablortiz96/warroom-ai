@@ -256,3 +256,51 @@ def mark_brief_shared(mission_id: UUID | str) -> dict | None:
 
 async def amark_brief_shared(mission_id: UUID | str) -> dict | None:
     return await asyncio.to_thread(mark_brief_shared, mission_id)
+
+
+# ── Mission schedules ─────────────────────────────────────────────────────────
+
+def list_schedules() -> list[dict]:
+    result = (
+        get_supabase()
+        .table("mission_schedules")
+        .select("*")
+        .order("created_at")
+        .execute()
+    )
+    return result.data or []
+
+
+def insert_schedule(target: str, mission_type: str, cron: str, label: str | None = None) -> dict:
+    row = {"target": target, "mission_type": mission_type.lower(), "cron": cron}
+    if label:
+        row["label"] = label
+    result = get_supabase().table("mission_schedules").insert(row).execute()
+    return result.data[0]
+
+
+def delete_schedule(schedule_id: str) -> None:
+    get_supabase().table("mission_schedules").delete().eq("id", schedule_id).execute()
+
+
+def mark_schedule_ran(schedule_id: str, mission_id: str) -> None:
+    get_supabase().table("mission_schedules").update({
+        "last_run_at": datetime.now(timezone.utc).isoformat(),
+        "last_mission_id": mission_id,
+    }).eq("id", schedule_id).execute()
+
+
+async def alist_schedules() -> list[dict]:
+    return await asyncio.to_thread(list_schedules)
+
+
+async def ainsert_schedule(target: str, mission_type: str, cron: str, label: str | None = None) -> dict:
+    return await asyncio.to_thread(insert_schedule, target, mission_type, cron, label)
+
+
+async def adelete_schedule(schedule_id: str) -> None:
+    await asyncio.to_thread(delete_schedule, schedule_id)
+
+
+async def amark_schedule_ran(schedule_id: str, mission_id: str) -> None:
+    await asyncio.to_thread(mark_schedule_ran, schedule_id, mission_id)

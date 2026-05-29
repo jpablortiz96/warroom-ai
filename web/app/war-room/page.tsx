@@ -20,12 +20,24 @@ import {
   Link2,
 } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
-import { apiPost } from "@/lib/api"
+import { apiGet, apiPost } from "@/lib/api"
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type MissionType = "account_pulse" | "supplier_watch" | "threat_surface"
 type Phase = "setup" | "running" | "complete" | "failed"
+type Tab = "deploy" | "schedules"
+
+type Schedule = {
+  id: string
+  target: string
+  mission_type: string
+  cron: string
+  label: string | null
+  active: boolean
+  last_run_at: string | null
+  last_mission_id: string | null
+}
 type AgentStatus = "idle" | "running" | "complete" | "failed"
 
 type AgentState = { status: AgentStatus; message: string }
@@ -146,10 +158,12 @@ const EMPTY_BD_DETAILS = (): BDDetails => ({})
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function WarRoomPage() {
+  const [tab, setTab] = useState<Tab>("deploy")
   const [phase, setPhase] = useState<Phase>("setup")
   const [selected, setSelected] = useState<MissionType>("account_pulse")
   const [target, setTarget] = useState("")
   const [missionId, setMissionId] = useState<string | null>(null)
+  const [schedules, setSchedules] = useState<Schedule[]>([])
   const [agents, setAgents] = useState<Record<AgentName, AgentState>>(INITIAL_AGENTS)
   const [bdDetails, setBdDetails] = useState<BDDetails>(EMPTY_BD_DETAILS)
   const [brief, setBrief] = useState<Brief | null>(null)
@@ -160,6 +174,19 @@ export default function WarRoomPage() {
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [log])
+
+  const loadSchedules = useCallback(async () => {
+    try {
+      const data = await apiGet<Schedule[]>("/missions/schedules")
+      setSchedules(data)
+    } catch {
+      // schedules table may not exist yet — show empty state
+    }
+  }, [])
+
+  useEffect(() => {
+    if (tab === "schedules") loadSchedules()
+  }, [tab, loadSchedules])
 
   const pushLog = useCallback((line: string) => {
     setLog((prev) => [...prev.slice(-100), line])
@@ -315,17 +342,29 @@ export default function WarRoomPage() {
         </div>
       </nav>
 
+      {/* Tab bar */}
+      {phase === "setup" && (
+        <div className="border-b border-zinc-800/60 px-6">
+          <div className="max-w-5xl mx-auto flex gap-0">
+            {(["deploy", "schedules"] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`font-mono text-[10px] tracking-widest px-5 py-3 border-b-2 transition-colors ${
+                  tab === t
+                    ? "border-zinc-300 text-zinc-200"
+                    : "border-transparent text-zinc-600 hover:text-zinc-400"
+                }`}
+              >
+                {t === "deploy" ? "DEPLOY MISSION" : "SCHEDULED MISSIONS"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="max-w-5xl mx-auto px-6 pt-10 pb-24">
-        {phase === "setup" ? (
-          <SetupPanel
-            selected={selected}
-            onSelect={setSelected}
-            target={target}
-            onTargetChange={setTarget}
-            onDeploy={handleDeploy}
-            onPresetDeploy={handlePresetDeploy}
-          />
-        ) : (
+        {phase !== "setup" ? (
           <ActivePanel
             phase={phase}
             missionType={selected}
@@ -336,6 +375,21 @@ export default function WarRoomPage() {
             brief={brief}
             log={log}
             logRef={logRef}
+          />
+        ) : tab === "deploy" ? (
+          <SetupPanel
+            selected={selected}
+            onSelect={setSelected}
+            target={target}
+            onTargetChange={setTarget}
+            onDeploy={handleDeploy}
+            onPresetDeploy={handlePresetDeploy}
+          />
+        ) : (
+          <SchedulesPanel
+            schedules={schedules}
+            onRefresh={loadSchedules}
+            onRunNow={handlePresetDeploy}
           />
         )}
       </div>
@@ -921,6 +975,122 @@ function BattleBriefPanel({
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Schedules panel ────────────────────────────────────────────────────────
+
+function SchedulesPanel({
+  schedules,
+  onRefresh,
+  onRunNow,
+}: {
+  schedules: Schedule[]
+  onRefresh: () => void
+  onRunNow: (target: string, missionType: MissionType) => void
+}) {
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`http://localhost:8000/missions/schedules/${id}`, { method: "DELETE" })
+      toast.success("Schedule removed.")
+      onRefresh()
+    } catch {
+      toast.error("Failed to remove schedule.")
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <p className="font-mono text-[10px] text-zinc-600 tracking-widest mb-2">
+          RECURRING MISSIONS · INNGEST SCHEDULER
+        </p>
+        <h1 className="text-3xl font-bold tracking-tight text-zinc-100">Scheduled Missions</h1>
+        <p className="text-sm text-zinc-500 mt-1">
+          Missions that run automatically on a schedule. Results appear in your mission history.
+        </p>
+      </div>
+
+      {/* Inngest dev server note */}
+      <div className="border border-zinc-800 bg-zinc-900/20 px-5 py-3">
+        <p className="font-mono text-[10px] text-zinc-600">
+          <span className="text-zinc-400">DEV SERVER</span> — start Inngest locally:{" "}
+          <span className="text-zinc-300">npx inngest-cli@latest dev -u http://localhost:8000/api/inngest</span>
+        </p>
+      </div>
+
+      {/* Schedule list */}
+      {schedules.length === 0 ? (
+        <div className="border border-zinc-800 bg-zinc-900/20 px-5 py-12 text-center">
+          <p className="font-mono text-[10px] text-zinc-700">
+            NO SCHEDULES — run the SQL migration first:
+          </p>
+          <p className="font-mono text-[9px] text-zinc-800 mt-1">
+            api/scripts/create_mission_schedules.sql
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {schedules.map((s) => (
+            <div
+              key={s.id}
+              className="border border-zinc-800 bg-zinc-900/20 px-5 py-4 flex items-center gap-6"
+            >
+              {/* Status dot */}
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${s.active ? "bg-green-500" : "bg-zinc-700"}`}
+              />
+
+              {/* Label + meta */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-zinc-200 font-semibold truncate">
+                  {s.label ?? `${s.target} · ${s.mission_type}`}
+                </p>
+                <div className="flex items-center gap-4 mt-1">
+                  <span className="font-mono text-[9px] text-zinc-600">{s.cron}</span>
+                  <span className="font-mono text-[9px] text-zinc-700">
+                    {s.last_run_at
+                      ? `Last ran ${new Date(s.last_run_at).toLocaleDateString()}`
+                      : "Never run"}
+                  </span>
+                  {s.last_mission_id && (
+                    <span className="font-mono text-[9px] text-zinc-700">
+                      MISSION {s.last_mission_id.slice(0, 8).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => onRunNow(s.target, s.mission_type as MissionType)}
+                  className="font-mono text-[10px] text-zinc-500 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-600 px-3 py-1.5 transition-colors"
+                >
+                  Run now
+                </button>
+                {s.id !== "preset-anthropic" && (
+                  <button
+                    onClick={() => handleDelete(s.id)}
+                    className="font-mono text-[10px] text-zinc-700 hover:text-red-400 border border-zinc-800 hover:border-red-900/40 px-3 py-1.5 transition-colors"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={onRefresh}
+        className="flex items-center gap-2 font-mono text-[10px] text-zinc-600 hover:text-zinc-300 transition-colors"
+      >
+        <RefreshCw className="h-3 w-3" />
+        Refresh
+      </button>
     </div>
   )
 }
