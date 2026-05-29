@@ -1,129 +1,150 @@
-# War Room AI — Bright Data Integration
+# Bright Data Integration — War Room AI
 
-All five Bright Data products are used in every mission. The Researcher agent selects which product to invoke per data source based on what that source requires to be reached reliably.
-
----
-
-## 1. MCP Server
-
-**What it does in War Room:**
-The Researcher agent uses the Bright Data MCP Server for agentic, programmatic navigation of the live web — following links, extracting content, and drilling into nested pages — without writing bespoke scraping code for each site. The MCP Server exposes the full web as a set of callable tools.
-
-**Which agent uses it:** Researcher (primary), Verifier (source confirmation)
-
-**When it's triggered:**
-- Navigating multi-page content (search → result → subpage)
-- Sites that require human-like navigation patterns
-- Verifying a source URL by fetching and extracting its current content
-- Any page where neither the Web Scraper API extractors nor static HTTP suffice
-
-**Endpoint:** `https://mcp.brightdata.com/mcp?token=<API_TOKEN>`
-
-**Screenshot placeholder:** `docs/screenshots/bright-data-mcp-usage.png` _(Day 3)_
+This document details how War Room AI uses all five Bright Data products on every mission, why each product is necessary, and what evidence demonstrates live usage.
 
 ---
 
-## 2. Web Scraper API
+## Product Coverage Summary
 
-**What it does in War Room:**
-Pulls structured, schema-validated data from 660+ pre-built site extractors. Instead of parsing raw HTML, the Researcher receives clean JSON with typed fields — ideal for LinkedIn company profiles, G2 reviews, Crunchbase funding rounds, Amazon product listings, and Glassdoor ratings.
-
-**Which agent uses it:** Researcher
-
-**When it's triggered:**
-- Extracting LinkedIn company data (headcount, hiring velocity, recent posts)
-- Pulling G2 or Trustpilot reviews for competitive sentiment analysis
-- Fetching Crunchbase funding history and investor signals
-- Any site covered by one of Bright Data's 660+ ready-made dataset extractors
-
-**Screenshot placeholder:** `docs/screenshots/bright-data-scraper-api-usage.png` _(Day 3)_
+| Product | API Module | Tool Name | Usage Per Mission | Status Check |
+|---------|-----------|-----------|-------------------|-------------|
+| SERP API | `bright_data/serp.py` | `serp_search`, `serp_news` | 1–2 calls | Live counter in BD panel |
+| Web Scraper API | `bright_data/scraper_api.py` | `scraper_linkedin` | 1 call (cached after first) | 24h Supabase cache |
+| Web Unlocker | `bright_data/unlocker.py` | `unlocker_fetch` | 1 call | Live counter in BD panel |
+| Scraping Browser | `bright_data/browser.py` | `browser_render` | 1 call | Live counter in BD panel |
+| MCP Server | `bright_data/mcp_client.py` | `mcp_search`, `mcp_scrape` | 1 call | Live counter in BD panel |
 
 ---
 
-## 3. SERP API
+## 1 — SERP API
 
-**What it does in War Room:**
-Executes cross-engine, cross-geography search queries and returns structured organic results, news items, and SERP features. The Researcher uses it for broad signal discovery — finding competitor mentions, pricing changes, hiring surges, regulatory news, and dark web forum discussions — before drilling deeper with other products.
+**What we use it for:** Cross-engine competitive signal discovery. The Planner assigns `serp_search` and `serp_news` steps that query Google for news events, pricing changes, hiring signals, breach reports, and regulatory actions. SERP API returns structured organic results with title, description, and URL — clean input for the Researcher's findings corpus.
 
-**Which agent uses it:** Researcher (broad discovery pass), Mission Planner (query generation validation)
+**Why SERP API specifically:**
+- Residential proxy backbone avoids the bot blocks that hit datacenter IP SERP scrapers
+- Structured JSON response eliminates HTML parsing — the Researcher gets clean results immediately
+- `serp_news` variant surfaces time-sensitive events that organic results would bury
 
-**When it's triggered:**
-- Initial signal sweep at mission start across Google, Bing, and regional engines
-- Hiring signal detection (`site:linkedin.com/jobs "Enterprise Sales" "Company Name"`)
-- News monitoring for competitor announcements, regulatory filings, incidents
-- Dark web and forum signal discovery (`site:reddit.com OR site:pastebin.com`)
+**Configuration:** `BRIGHT_DATA_SERP_ZONE` in `api/.env`
 
-**Request shape:**
-```python
-POST https://api.brightdata.com/request
-{
-    "zone": "<BRIGHT_DATA_SERP_ZONE>",
-    "url": "https://www.google.com/search?q=<query>&brd_json=1",
-    "format": "raw"
-}
+**Code:** [`api/app/bright_data/serp.py`](https://github.com/jpablortiz96/warroom-ai/blob/main/api/app/bright_data/serp.py)
+
+**Screenshot placeholder:**
+![SERP API in action](https://github.com/jpablortiz96/warroom-ai/raw/main/docs/screenshots/bd-serp-api.png)
+*SERP API results card in the Bright Data Coverage panel: call count, latency, last query sent.*
+
+---
+
+## 2 — Web Scraper API
+
+**What we use it for:** Structured LinkedIn person profile extraction for CEO/founder intelligence. The Planner identifies the current CEO's LinkedIn URL (from a verified hardcoded list or LLM knowledge), and the Researcher calls `collect_and_wait()` to trigger a Bright Data dataset snapshot and poll for results.
+
+**Why Web Scraper API specifically:**
+- LinkedIn is unreachable with standard HTTP scraping — the pre-built LinkedIn extractor handles authentication, anti-bot, and data normalization
+- The 660+ pre-built extractors mean zero engineering to add new structured sources (Crunchbase, G2, SEC EDGAR are all available)
+- Snapshot-based async model matches LinkedIn's 1–3 minute collection window without blocking the mission
+
+**Caching:** Snapshots are cached in `scraper_cache` (Supabase) for 24 hours. A repeat mission on the same target returns the cached profile in 0ms instead of triggering a new snapshot.
+
+**Configuration:** `BRIGHT_DATA_SCRAPER_DATASET_ID` in `api/.env`
+
+**Code:** [`api/app/bright_data/scraper_api.py`](https://github.com/jpablortiz96/warroom-ai/blob/main/api/app/bright_data/scraper_api.py)
+
+**Screenshot placeholder:**
+![Scraper API in action](https://github.com/jpablortiz96/warroom-ai/raw/main/docs/screenshots/bd-scraper-api.png)
+*Web Scraper API card showing 1 call, 0ms latency (cache hit) or 45–90s (live snapshot).*
+
+---
+
+## 3 — Web Unlocker
+
+**What we use it for:** Bypassing bot protection on press rooms, investor relations pages, trust portals, and government enforcement records. For `supplier_watch` missions, this reaches IR pages at `investors.boeing.com`. For `threat_surface` missions, it reaches regulatory enforcement databases and company security disclosure pages.
+
+**Why Web Unlocker specifically:**
+- The highest-value intelligence sources are behind the strictest bot protection — IR pages, government portals, and trust/security pages are actively defended
+- Web Unlocker's residential proxy rotation and browser fingerprinting bypass this without requiring per-site configuration
+- Returns raw HTML which `markdownify` converts to clean Markdown for LLM consumption
+
+**Configuration:** `BRIGHT_DATA_UNLOCKER_ZONE` in `api/.env`
+
+**Code:** [`api/app/bright_data/unlocker.py`](https://github.com/jpablortiz96/warroom-ai/blob/main/api/app/bright_data/unlocker.py)
+
+**Screenshot placeholder:**
+![Web Unlocker in action](https://github.com/jpablortiz96/warroom-ai/raw/main/docs/screenshots/bd-web-unlocker.png)
+*Web Unlocker card: call count, latency (~6–15s for protected pages), last URL fetched.*
+
+---
+
+## 4 — Scraping Browser
+
+**What we use it for:** Rendering JavaScript-heavy pages that static HTTP fetchers cannot access. For `account_pulse` missions, this renders the target's `/pricing` page — almost always a React SPA with dynamic tier loading. For `supplier_watch`, it renders IR pages with JS-loaded financial calendars. For `threat_surface`, it renders trust/security pages with dynamically loaded content.
+
+**Why Scraping Browser specifically:**
+- Uses Playwright CDP over WSS to connect to Bright Data's managed browser fleet — no local browser process, no anti-bot arms race
+- Uses `asyncio.to_thread` to wrap the synchronous Playwright API safely on Windows uvicorn event loops (avoids `NotImplementedError` from async Playwright on Windows)
+- Returns rendered HTML which `markdownify` strips to clean Markdown
+
+**Configuration:** `BRIGHT_DATA_BROWSER_USER` and `BRIGHT_DATA_BROWSER_PASS` in `api/.env`
+
+**Code:** [`api/app/bright_data/browser.py`](https://github.com/jpablortiz96/warroom-ai/blob/main/api/app/bright_data/browser.py)
+
+**Screenshot placeholder:**
+![Scraping Browser in action](https://github.com/jpablortiz96/warroom-ai/raw/main/docs/screenshots/bd-scraping-browser.png)
+*Scraping Browser card: call count, latency (~9–25s for full JS render), last URL rendered.*
+
+---
+
+## 5 — MCP Server
+
+**What we use it for:** Agentic navigation for unstructured exploration tasks. The Researcher calls `mcp_client.search()` and `mcp_client.scrape_markdown()` to send queries through Bright Data's MCP server — the same tool surface Claude Desktop exposes. Used for structured intelligence searches that don't fit a specific pre-built extractor.
+
+**Why MCP Server specifically:**
+- Native Claude integration — the Researcher calls Bright Data tools the same way Claude Desktop would, via the `mcp` Python SDK over stdio transport (`npx @brightdata/mcp`)
+- `scrape_as_markdown` returns any page as clean Markdown without writing HTML parsing code
+- `search_engine` provides a natural-language search interface over Bright Data's SERP infrastructure with a different latency/format tradeoff than the direct SERP API
+
+**Configuration:** `BRIGHT_DATA_API_TOKEN` in `api/.env` (shared with other products)
+
+**Code:** [`api/app/bright_data/mcp_client.py`](https://github.com/jpablortiz96/warroom-ai/blob/main/api/app/bright_data/mcp_client.py)
+
+**Screenshot placeholder:**
+![MCP Server in action](https://github.com/jpablortiz96/warroom-ai/raw/main/docs/screenshots/bd-mcp-server.png)
+*MCP Server card: call count, latency (~8–20s including npx subprocess startup), last search query.*
+
+---
+
+## The Coverage Panel — Live Proof
+
+Every active mission renders the Bright Data Coverage panel in the War Room Console. Five product cards, each showing:
+
+- **Icon + label** — product identity (Search, Globe, ShieldCheck, FileText, Monitor icons from Lucide)
+- **Call count** — large prominent number updated in real time as the Researcher fires each step
+- **Cumulative latency** — total seconds contributed by this product to the mission wall time
+- **Last goal** — the step goal that used this product, with full tooltip on hover
+- **Status dot** — green (ok), amber (empty), red (failed/timeout)
+
+The panel updates via SSE events. Every `tool_call` event increments the counter; every `tool_result` event updates latency and status.
+
+![Full Coverage Panel](https://github.com/jpablortiz96/warroom-ai/raw/main/docs/screenshots/final-04-bright-data-panel.png)
+
+---
+
+## Raw Response Logging
+
+Every Bright Data client emits a `WARNING`-level log line per call for diagnostics. Start the server with `--log-level warning` to see:
+
+```
+brightdata.raw product=serp_api tool=serp_search status_code=200 latency_ms=4231 body_first_500='...'
+brightdata.raw product=web_unlocker tool=unlocker_fetch status_code=200 latency_ms=8710 body_first_500='...'
+brightdata.raw product=mcp_server tool=search_engine latency_ms=12400 result_len=3841 result_first_500='...'
+brightdata.raw product=web_scraper_api tool=trigger status_code=200 body_first_500='{"snapshot_id":"..."}'
+brightdata.raw product=scraping_browser tool=browser_render latency_ms=9380 html_len=84210 html_first_500='...'
 ```
 
-**Screenshot placeholder:** `docs/screenshots/bright-data-serp-usage.png` _(Day 3)_
-
 ---
 
-## 4. Web Unlocker
+## Account Usage Reference
 
-**What it does in War Room:**
-Provides residential proxy rotation, CAPTCHA solving, and fingerprint management so the Researcher can access pages that block datacenter IPs. Paywalled news sites, protected corporate portals, regionally restricted content, and sites with aggressive anti-bot measures are all reachable via Web Unlocker.
+Hackathon development account: ~$0.27 spent across 5 days and hundreds of test missions. All zones active, $256+ credit remaining.
 
-**Which agent uses it:** Researcher
-
-**When it's triggered:**
-- News sites that block standard requests (Bloomberg, FT, Reuters)
-- Pricing pages that geo-restrict to specific countries
-- Pages that return bot-detection challenges to datacenter IPs
-- Regulatory filing portals (SEC EDGAR, EU company registries)
-- Any URL where a plain `httpx.get()` returns a CAPTCHA or 403
-
-**Screenshot placeholder:** `docs/screenshots/bright-data-unlocker-usage.png` _(Day 3)_
-
----
-
-## 5. Scraping Browser
-
-**What it does in War Room:**
-Renders full JavaScript-heavy pages in a managed remote browser — handling SPAs, infinite-scroll feeds, lazy-loaded content, and client-side data fetching that static HTTP cannot see. The Researcher uses it when the target data only exists after the page's JS has executed.
-
-**Which agent uses it:** Researcher
-
-**When it's triggered:**
-- Single-page applications where content is loaded dynamically post-render
-- Pricing pages that render server-side but update client-side after login-check
-- LinkedIn feeds, Twitter/X timelines, and other infinite-scroll interfaces
-- Taking screenshots for visual evidence in the Battle Brief (Day 5)
-- Sites requiring multi-step JavaScript interactions (login flows, modal acceptance)
-
-**Screenshot placeholder:** `docs/screenshots/bright-data-browser-usage.png` _(Day 3)_
-
----
-
-## Product selection logic (Researcher agent)
-
-```
-For each source URL in the research plan:
-
-  1. Does Bright Data have a structured extractor for this domain?
-     → Yes: Web Scraper API  (clean JSON, no parsing needed)
-
-  2. Is this a broad signal discovery step?
-     → Yes: SERP API  (cross-engine, returns organic list)
-
-  3. Does the page require agentic multi-step navigation?
-     → Yes: MCP Server  (tool-call based navigation)
-
-  4. Does the page execute meaningful JavaScript before data appears?
-     → Yes: Scraping Browser  (full render)
-
-  5. Is the page protected by bot detection, geo-block, or paywall?
-     → Yes: Web Unlocker  (residential proxy + CAPTCHA bypass)
-
-  Default: Web Unlocker  (safe fallback for unknown sites)
-```
-
-Per-product call counts are logged in `agent_events` (tagged with `bright_data_product`) and aggregated in `briefs.bright_data_calls` for the UI usage panel.
+Production cost estimate per 6-call mission: ~$0.048 Bright Data. Full unit economics in [README.md](https://github.com/jpablortiz96/warroom-ai/blob/main/README.md).

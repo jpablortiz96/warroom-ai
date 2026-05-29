@@ -1,16 +1,14 @@
-# Executive Battle Brief — Supplier Watch
+# Executive Battle Brief — Supplier Watch · boeing.com
 
 **Target:** boeing.com  
-**Mission:** Supplier Watch (Finance & Market Intelligence)  
-**Generated:** 2026-05-28 · War Room AI  
-**Mission ID:** [live-generated]
+**Mission Type:** Supplier Watch (Finance & Market Intelligence)  
+**Track:** Track 2 — Finance & Market Intelligence  
+**Generated:** 2026-05-29 · War Room AI · Mission B7EF2C3B
 
 ---
 
-## Scores
-
 | Metric | Value |
-|---|---|
+|--------|-------|
 | Market Move Score | **72 / 100** |
 | Recommended Move | **DEFEND** |
 | Confidence | **78 / 100** |
@@ -19,53 +17,59 @@
 
 ## Situation
 
-Boeing remains under sustained regulatory and financial pressure following the 2024 737 MAX 9 door plug incident. The FAA has imposed production rate caps, delivery delays continue across commercial and defense programs, and CEO Kelly Ortberg (appointed August 2024) is executing a restructuring that includes significant workforce reductions and supplier payment renegotiations. Any organization with Boeing as a direct or upstream supplier — aerospace, defense, airlines — faces elevated supply chain risk that warrants active monitoring and contingency planning. The situation is not terminal (Boeing's defense backlog provides a floor), but the commercial aviation recovery timeline has slipped materially.
+Boeing remains under sustained regulatory and financial pressure following the 2024 737 MAX 9 door plug incident, with active FAA production rate caps, ongoing delivery delays, and a CEO transition (Calhoun → Ortberg, August 2024) that adds leadership continuity risk to an already stressed operational picture.
+
+FAA enforcement actions have capped 737 MAX production rates, extending delivery timelines for airline customers and compressing Boeing's near-term cash flow. Ortberg's restructuring includes supplier payment renegotiations and workforce reductions — signals that Boeing is actively managing short-term liquidity. Defense backlog provides a floor, but commercial aviation recovery timelines have slipped materially from prior guidance. Any organization with Boeing as a direct or tier-1 supplier faces elevated supply chain risk that warrants active monitoring and documented contingency planning.
 
 ---
 
 ## Immediate
 
-- **Audit Boeing-dependent supply chain exposure** — map every component, subassembly, or service line with Boeing as a direct or tier-1 supplier; quantify revenue concentration risk in writing for your CFO
-- **Review contract payment terms** — Boeing's supplier payment renegotiations are active; if your terms allow Boeing to extend payment windows, model the cash flow impact of a 30–60 day delay scenario
-- **Contact Boeing account team for program-level delivery status** — official program communications are lagging the actual delivery schedule; a direct conversation will surface risk earlier than press releases
+- Audit Boeing-dependent supply chain exposure — map every component, subassembly, or service line with Boeing as a direct or tier-1 supplier; quantify revenue concentration risk in a written document for your CFO this week
+- Review contract payment terms with Boeing — active supplier payment renegotiations are confirmed; if your terms allow Boeing to extend payment windows unilaterally, model the cash flow impact of a 30–60 day delay scenario
+- Contact Boeing account team directly for program-level delivery status — official communications are lagging actual delivery schedule; a direct conversation will surface schedule risk earlier than press releases
 
 ---
 
 ## This Week
 
-- **Identify alternative sources for Boeing-sourced components** — even if not immediately needed, qualifying a second source for top-5 Boeing-dependent components reduces future exposure
-- **Review force majeure and delay clauses in Boeing contracts** — the FAA production cap creates a legitimate basis for schedule changes; ensure your contracts protect you
-- **Model three scenarios**: (1) Boeing stabilizes by Q4 2026, (2) one additional quality incident triggers expanded FAA action, (3) Boeing restructuring accelerates supplier payment delays by 90+ days
+- Identify alternative sources for your top-5 Boeing-dependent components — even without immediate intent to switch, qualifying a second source eliminates single-source risk for your next contract renewal
+- Review force majeure and delay clauses in Boeing supply agreements — the FAA production cap creates legitimate grounds for schedule changes; ensure your contracts protect your revenue if Boeing misses committed delivery windows
+- Model three scenarios for the next 12 months: (1) Boeing stabilizes by Q4 2026 per Ortberg guidance, (2) one additional safety incident triggers expanded FAA action, (3) restructuring accelerates supplier payment delays past 90 days
 
 ---
 
 ## Watch
 
-- FAA production rate decisions for 737 MAX and 787 programs — any further cap reduction is a high-impact signal
-- Boeing defense contract awards or losses — DoD program wins would stabilize cash flow significantly
-- Ortberg's Q2 2026 earnings call language around supplier relationships and payment terms
-- 737 MAX 10 certification timeline — still pending as of Q2 2026; delays extend delivery backlog pressure
-- Any new safety incidents — regulatory response would be disproportionately severe given existing oversight
+- FAA production rate decisions for 737 MAX and 787 programs — any further cap reduction or new enforcement action is a high-impact signal that extends your risk exposure window
+- Boeing defense contract awards and losses — DoD program wins would stabilize cash flow and reduce pressure on commercial supply chain
+- Ortberg Q2 2026 earnings call language around supplier relationships and payment terms — this is when renegotiation details will surface publicly
+- 737 MAX 10 certification timeline — still pending as of Q2 2026; each delay extends backlog pressure and delivery uncertainty for airline customers
+- Any new safety incidents — regulatory response would be disproportionately severe given active oversight, and could trigger customer cancellations that accelerate financial stress
 
 ---
 
 ## Commander Rationale
 
-DEFEND because the risk is real and quantifiable but Boeing remains a going concern with a strong defense backlog as a financial floor. The recommended posture is to reduce exposure at the margin (audit, qualify alternatives, review contracts) while not making irreversible decisions to exit the Boeing supply chain — which would be premature given the Ortberg stabilization narrative and Q4 2026 recovery expectations. Confidence is 78/100 — SERP, Web Unlocker, and Scraping Browser confirmed FAA enforcement, CEO transition, and investor relations data; Scraper API contributed LinkedIn leadership profile data.
+DEFEND because the risk is real, quantifiable, and documented — but Boeing remains a going concern with a $280B+ defense backlog as a meaningful financial floor. The recommended posture is to reduce exposure at the margin: audit, qualify alternatives, harden contracts. Not to make irreversible decisions to exit the Boeing supply chain, which would be premature given the Ortberg stabilization narrative and Q4 2026 recovery timeline communicated to investors.
+
+ESCALATE was rejected because no single finding rises to the level of imminent catastrophic failure — the risk is elevated and chronic, not acute. ATTACK (opportunistic pivot away from Boeing) was rejected because alternatives in aerospace supply chains require 12–24 month qualification cycles that cannot be rushed without quality risk.
+
+Confidence 78/100 — SERP API confirmed FAA enforcement actions and CEO transition; Web Unlocker reached the IR page with financial calendar data; Scraping Browser confirmed investor relations content; MCP Server provided supplementary supplier payment reporting.
 
 ---
 
 ## Bright Data Coverage
 
-| Product | Calls | Status |
-|---|---|---|
-| SERP API | 2 | ok |
-| MCP Server | 1 | ok |
-| Web Unlocker | 1 | ok |
-| Web Scraper API | 1 | ok |
-| Scraping Browser | 1 | ok |
-| **Total** | **6** | **5/5 products** |
+| Product | Calls | Latency | Status |
+|---------|-------|---------|--------|
+| SERP API | 2 | 5.1s + 4.4s | ok |
+| MCP Server | 1 | 11.2s | ok |
+| Web Unlocker | 1 | 8.9s | ok |
+| Web Scraper API | 1 | 0ms (cache) | ok |
+| Scraping Browser | 1 | 12.7s | ok |
+| **Total** | **6** | **12.8s wall** | **5/5** |
 
 ---
 
-*Generated by War Room AI · Powered by Bright Data · [github.com/jpablortiz96/warroom-ai](https://github.com/jpablortiz96/warroom-ai)*
+*Generated by [War Room AI](https://warroom-ai.vercel.app) · Powered by [Bright Data](https://brightdata.com) · [Run this mission live →](https://warroom-ai.vercel.app/war-room)*
