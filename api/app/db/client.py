@@ -240,3 +240,19 @@ async def alist_missions(limit: int = 20, offset: int = 0) -> list[dict]:
 
 async def alist_agent_events(mission_id: UUID | str) -> list[dict]:
     return await asyncio.to_thread(list_agent_events, mission_id)
+
+
+def mark_brief_shared(mission_id: UUID | str) -> dict | None:
+    """Set shared_at on the brief for this mission. Returns the updated brief."""
+    result = (
+        get_supabase()
+        .table("briefs")
+        .update({"shared_at": datetime.now(timezone.utc).isoformat()})
+        .eq("mission_id", str(mission_id))
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
+async def amark_brief_shared(mission_id: UUID | str) -> dict | None:
+    return await asyncio.to_thread(mark_brief_shared, mission_id)
