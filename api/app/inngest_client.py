@@ -2,13 +2,8 @@
 
 Dev server:  npx inngest-cli@latest dev -u http://localhost:8000/api/inngest
 Docs:        https://www.inngest.com/docs/sdk/serve
-
-Functions registered:
-  warroom-ai/missions.run  — event-triggered: runs a mission on demand
-  warroom-ai/missions.weekly-anthropic — cron: Anthropic account_pulse every Monday 9am UTC
 """
 
-import asyncio
 import logging
 
 import inngest
@@ -31,12 +26,13 @@ async def run_mission_fn(ctx: inngest.Context, step: inngest.Step) -> dict:
     if not target:
         return {"error": "target is required"}
 
-    log.info("Inngest: running scheduled mission target=%s type=%s", target, mission_type)
+    log.info("Inngest: running mission target=%s type=%s", target, mission_type)
 
     from app.db import client as db
     from app.agents import events as ev
     from app.agents.graph import mission_graph
     from app.agents.state import MissionState
+    import asyncio
 
     mission = await db.ainsert_mission(target, mission_type)
     mission_id = str(mission["id"])
@@ -46,7 +42,7 @@ async def run_mission_fn(ctx: inngest.Context, step: inngest.Step) -> dict:
         "mission_id": mission_id,
         "mission_type": mission_type,
         "target": target,
-        "context": f"Recurring scheduled mission (schedule_id={schedule_id})" if schedule_id else None,
+        "context": f"Recurring schedule (id={schedule_id})" if schedule_id else None,
         "research_plan": [],
         "raw_findings": "",
         "bright_data_calls": [],
@@ -88,14 +84,22 @@ async def run_mission_fn(ctx: inngest.Context, step: inngest.Step) -> dict:
         await db.aupdate_mission_status(mission_id, "completed")
 
         if schedule_id:
-            await db.amark_schedule_ran(schedule_id, mission_id)
+            try:
+                await db.amark_schedule_ran(schedule_id, mission_id)
+            except Exception:
+                pass
 
     except Exception as exc:
-        await db.aupdate_mission_status(mission_id, "failed")
         log.error("Inngest mission failed: %s", exc)
-
+        try:
+            await db.aupdate_mission_status(mission_id, "failed")
+        except Exception:
+            pass
     finally:
-        await ev.emit_done(mission_id)
+        try:
+            await ev.emit_done(mission_id)
+        except Exception:
+            pass
 
     return {"mission_id": mission_id, "status": "completed"}
 
@@ -106,12 +110,18 @@ async def run_mission_fn(ctx: inngest.Context, step: inngest.Step) -> dict:
 )
 async def weekly_anthropic_fn(ctx: inngest.Context, step: inngest.Step) -> dict:
     """Pre-loaded schedule: Anthropic account_pulse every Monday 9am UTC."""
-    await client.send(inngest.Event(
-        name="warroom/missions.run",
-        data={"target": "anthropic.com", "mission_type": "account_pulse", "schedule_id": "preset-anthropic"},
-    ))
+    await step.send_event(
+        "trigger-anthropic",
+        inngest.Event(
+            name="warroom/missions.run",
+            data={
+                "target": "anthropic.com",
+                "mission_type": "account_pulse",
+                "schedule_id": "preset-anthropic",
+            },
+        ),
+    )
     return {"triggered": True}
 
 
-# All functions to register with FastAPI.
 FUNCTIONS = [run_mission_fn, weekly_anthropic_fn]

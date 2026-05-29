@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes import briefs, health, missions, schedules
+
+log = logging.getLogger(__name__)
 
 app = FastAPI(
     title="War Room AI API",
@@ -11,7 +15,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:8288"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,5 +32,6 @@ try:
     import inngest.fast_api
     from app.inngest_client import FUNCTIONS, client as inngest_client
     inngest.fast_api.serve(app, inngest_client, FUNCTIONS)
-except Exception:
-    pass  # Inngest optional — app works without it
+    log.warning("Inngest: endpoint mounted at /api/inngest (%d functions)", len(FUNCTIONS))
+except Exception as exc:
+    log.warning("Inngest: endpoint NOT mounted — %s: %s", type(exc).__name__, exc)
