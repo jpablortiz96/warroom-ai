@@ -160,6 +160,67 @@ async def stream_mission(mission_id: str):
     return EventSourceResponse(event_generator())
 
 
+@router.get("/{mission_id}/diff")
+async def get_mission_diff(mission_id: str) -> dict:
+    """Compare this mission's brief to the most recent prior run on the same target+type."""
+    mission = await db.aget_mission(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    current_brief = await db.aget_brief_by_mission(mission_id)
+    if not current_brief:
+        return {"has_prior": False}
+
+    prior_mission = await db.afind_prior_mission(
+        target=mission["target"],
+        mission_type=mission["mission_type"],
+        exclude_id=mission_id,
+    )
+    if not prior_mission:
+        return {"has_prior": False}
+
+    prior_brief = await db.aget_brief_by_mission(str(prior_mission["id"]))
+    if not prior_brief:
+        return {"has_prior": False}
+
+    score_delta = current_brief["market_move_score"] - prior_brief["market_move_score"]
+    confidence_delta = current_brief["confidence_score"] - prior_brief["confidence_score"]
+    current_move = (current_brief.get("recommended_move") or "").upper()
+    prior_move = (prior_brief.get("recommended_move") or "").upper()
+
+    def _actions(b: dict) -> list[str]:
+        ap = b.get("action_pack") or {}
+        acts = ap.get("actions") or {}
+        return (acts.get("immediate") or []) + (acts.get("this_week") or []) + (acts.get("watch") or [])
+
+    def _jaccard(a: str, b: str) -> float:
+        ta, tb = set(a.lower().split()), set(b.lower().split())
+        if not ta or not tb:
+            return 0.0
+        return len(ta & tb) / len(ta | tb)
+
+    def _matched(item: str, pool: list[str], thresh: float = 0.4) -> bool:
+        return any(_jaccard(item, p) >= thresh for p in pool)
+
+    cur_acts = _actions(current_brief)
+    pri_acts = _actions(prior_brief)
+    new_findings = [a for a in cur_acts if not _matched(a, pri_acts)][:3]
+    resolved_findings = [a for a in pri_acts if not _matched(a, cur_acts)][:3]
+
+    return {
+        "has_prior": True,
+        "prior_mission_id": str(prior_mission["id"]),
+        "prior_date": prior_mission.get("created_at"),
+        "score_delta": score_delta,
+        "confidence_delta": confidence_delta,
+        "move_changed": current_move != prior_move,
+        "prior_move": prior_move,
+        "current_move": current_move,
+        "new_findings": new_findings,
+        "resolved_findings": resolved_findings,
+        "prior_summary": ((prior_brief.get("action_pack") or {}).get("situation") or ""),
+    }
+
+
 @router.post("/{mission_id}/notify")
 async def notify_slack(mission_id: str, body: dict) -> dict:
     """Post a formatted Battle Brief to a Slack webhook (Slack Block Kit)."""

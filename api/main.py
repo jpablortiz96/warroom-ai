@@ -1,4 +1,5 @@
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,9 +14,17 @@ app = FastAPI(
     version="0.1.0",
 )
 
+_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:8288",   # Inngest dev server
+]
+# Add production frontend URL from env (set in Railway/Render after Vercel deploy).
+if _prod := os.getenv("FRONTEND_URL"):
+    _CORS_ORIGINS.append(_prod.rstrip("/"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8288"],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

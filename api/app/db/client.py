@@ -238,6 +238,28 @@ async def alist_missions(limit: int = 20, offset: int = 0) -> list[dict]:
     return await asyncio.to_thread(list_missions, limit, offset)
 
 
+def find_prior_mission(target: str, mission_type: str, exclude_id: str) -> dict | None:
+    """Return the most recent completed mission for the same (target, mission_type), excluding exclude_id."""
+    result = (
+        get_supabase()
+        .table("missions")
+        .select("*")
+        .eq("target", target)
+        .eq("mission_type", mission_type.lower())
+        .eq("status", "completed")
+        .neq("id", exclude_id)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    data = result.data or []
+    return data[0] if data else None
+
+
+async def afind_prior_mission(target: str, mission_type: str, exclude_id: str) -> dict | None:
+    return await asyncio.to_thread(find_prior_mission, target, mission_type, exclude_id)
+
+
 async def alist_agent_events(mission_id: UUID | str) -> list[dict]:
     return await asyncio.to_thread(list_agent_events, mission_id)
 

@@ -31,6 +31,20 @@ type MissionType = "account_pulse" | "supplier_watch" | "threat_surface"
 type Phase = "setup" | "running" | "complete" | "failed"
 type Tab = "deploy" | "schedules"
 
+type MissionDiff = {
+  has_prior: boolean
+  prior_mission_id?: string
+  prior_date?: string
+  score_delta?: number
+  confidence_delta?: number
+  move_changed?: boolean
+  prior_move?: string
+  current_move?: string
+  new_findings?: string[]
+  resolved_findings?: string[]
+  prior_summary?: string
+}
+
 type Schedule = {
   id: string
   target: string
@@ -167,6 +181,7 @@ export default function WarRoomPage() {
   const [target, setTarget] = useState("")
   const [missionId, setMissionId] = useState<string | null>(null)
   const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [isDeploying, setIsDeploying] = useState(false)
   const [agents, setAgents] = useState<Record<AgentName, AgentState>>(INITIAL_AGENTS)
   const [bdDetails, setBdDetails] = useState<BDDetails>(EMPTY_BD_DETAILS)
   const [brief, setBrief] = useState<Brief | null>(null)
@@ -196,6 +211,21 @@ export default function WarRoomPage() {
   }, [])
 
   const deployMission = async (missionTarget: string, missionType: MissionType) => {
+    if (isDeploying) return                // block every duplicate click
+
+    setIsDeploying(true)
+
+    // Tear down any existing stream before starting a new one.
+    esRef.current?.close()
+    esRef.current = null
+
+    // Reset all mission state.
+    setLog([])
+    setBdDetails(EMPTY_BD_DETAILS())
+    setAgents(INITIAL_AGENTS())
+    setBrief(null)
+    setMissionId(null)
+
     try {
       const res = await apiPost<{ mission_id: string }>("/missions/", {
         mission_type: missionType,
@@ -207,6 +237,7 @@ export default function WarRoomPage() {
       pushLog(`DEPLOYED  mission=${res.mission_id.slice(0, 8)}`)
       startSSE(res.mission_id)
     } catch (err) {
+      setIsDeploying(false)
       toast.error("Deploy failed", {
         description: err instanceof Error ? err.message : String(err),
       })
@@ -296,16 +327,21 @@ export default function WarRoomPage() {
       } catch {
         // best-effort
       }
+      setIsDeploying(false)
       setPhase("complete")
     })
 
     es.onerror = () => {
       pushLog("SSE ERROR: connection dropped")
+      setIsDeploying(false)
+      setPhase("failed")
     }
   }
 
   const handleReset = () => {
     esRef.current?.close()
+    esRef.current = null
+    setIsDeploying(false)
     setPhase("setup")
     setMissionId(null)
     setBrief(null)
@@ -334,6 +370,12 @@ export default function WarRoomPage() {
                 NEW MISSION
               </button>
             )}
+            <Link
+              href="/pricing"
+              className="font-mono text-xs text-zinc-600 hover:text-zinc-300 transition-colors"
+            >
+              Pricing
+            </Link>
             <Link
               href="/"
               className="flex items-center gap-1.5 font-mono text-xs text-zinc-600 hover:text-zinc-300 transition-colors"
@@ -387,6 +429,7 @@ export default function WarRoomPage() {
             onTargetChange={setTarget}
             onDeploy={handleDeploy}
             onPresetDeploy={handlePresetDeploy}
+            isDeploying={isDeploying}
           />
         ) : (
           <SchedulesPanel
@@ -425,6 +468,7 @@ function SetupPanel({
   onTargetChange,
   onDeploy,
   onPresetDeploy,
+  isDeploying,
 }: {
   selected: MissionType
   onSelect: (t: MissionType) => void
@@ -432,6 +476,7 @@ function SetupPanel({
   onTargetChange: (v: string) => void
   onDeploy: () => void
   onPresetDeploy: (target: string, missionType: MissionType) => void
+  isDeploying: boolean
 }) {
   return (
     <div className="space-y-10">
@@ -457,8 +502,13 @@ function SetupPanel({
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: i * 0.07 }}
-              onClick={() => onPresetDeploy(p.target, p.mission)}
-              className="group text-left border border-zinc-700 bg-zinc-900/40 p-5 hover:border-zinc-500 hover:bg-zinc-900/70 transition-all cursor-pointer"
+              onClick={() => !isDeploying && onPresetDeploy(p.target, p.mission)}
+              disabled={isDeploying}
+              className={`group text-left border border-zinc-700 bg-zinc-900/40 p-5 transition-all ${
+                isDeploying
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:border-zinc-500 hover:bg-zinc-900/70 cursor-pointer"
+              }`}
             >
               <p className="font-mono text-[9px] text-zinc-500 tracking-widest mb-3">
                 {p.track}
@@ -540,10 +590,11 @@ function SetupPanel({
           />
           <button
             onClick={onDeploy}
-            className="flex items-center gap-2 px-6 py-2.5 bg-zinc-100 text-zinc-900 font-mono text-xs font-semibold tracking-widest hover:bg-white transition-colors"
+            disabled={isDeploying}
+            className="flex items-center gap-2 px-6 py-2.5 bg-zinc-100 text-zinc-900 font-mono text-xs font-semibold tracking-widest hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            DEPLOY
-            <ChevronRight className="h-3.5 w-3.5" />
+            {isDeploying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            {isDeploying ? "DEPLOYING…" : "DEPLOY"}
           </button>
         </div>
       </div>
@@ -841,11 +892,22 @@ function BattleBriefPanel({
   const recommended_move = (brief.recommended_move ?? "monitor").toUpperCase()
   const actions = action_pack.actions ?? {}
 
+  const [diff, setDiff] = useState<MissionDiff | null>(null)
+  const [diffModal, setDiffModal] = useState(false)
   const [slackModal, setSlackModal] = useState(false)
   const [slackUrl, setSlackUrl] = useState(() =>
     typeof window !== "undefined" ? (localStorage.getItem("warroom_slack_webhook") ?? "") : ""
   )
   const [slackSending, setSlackSending] = useState(false)
+
+  useEffect(() => {
+    if (!missionId) return
+    setDiff(null)
+    fetch(`http://localhost:8000/missions/${missionId}/diff`)
+      .then((r) => r.json())
+      .then((d: MissionDiff) => { if (d.has_prior) setDiff(d) })
+      .catch(() => {})
+  }, [missionId])
 
   const handleCopyMarkdown = () => {
     const move = recommended_move
@@ -954,7 +1016,108 @@ function BattleBriefPanel({
       ? "text-zinc-300"
       : "text-zinc-500"
 
+  const priorDateStr = diff?.prior_date
+    ? new Date(diff.prior_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : ""
+
   return (
+    <>
+    {/* ── Diff panel (only when a prior run exists) ── */}
+    {diff && diff.has_prior && (
+      <div className="border border-zinc-700/60 bg-zinc-900/20 px-5 py-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="font-mono text-[9px] text-zinc-500 tracking-widest">
+              VS. {priorDateStr.toUpperCase()} RUN
+            </span>
+            {diff.score_delta !== undefined && (
+              <span className={`font-mono text-[10px] font-semibold ${
+                diff.score_delta > 0 ? "text-green-400" : diff.score_delta < 0 ? "text-red-400" : "text-zinc-500"
+              }`}>
+                Score {diff.score_delta > 0 ? "+" : ""}{diff.score_delta}
+              </span>
+            )}
+            {diff.confidence_delta !== undefined && (
+              <span className={`font-mono text-[10px] ${
+                diff.confidence_delta > 0 ? "text-green-400/70" : diff.confidence_delta < 0 ? "text-red-400/70" : "text-zinc-600"
+              }`}>
+                Confidence {diff.confidence_delta > 0 ? "+" : ""}{diff.confidence_delta}
+              </span>
+            )}
+            {diff.move_changed ? (
+              <span className="font-mono text-[10px] text-amber-400">
+                {diff.prior_move} → {diff.current_move}
+              </span>
+            ) : (
+              <span className="font-mono text-[10px] text-zinc-600">
+                Move unchanged
+              </span>
+            )}
+            {(diff.new_findings?.length ?? 0) > 0 && (
+              <span className="font-mono text-[9px] text-green-500">
+                +{diff.new_findings!.length} new
+              </span>
+            )}
+            {(diff.resolved_findings?.length ?? 0) > 0 && (
+              <span className="font-mono text-[9px] text-zinc-500">
+                -{diff.resolved_findings!.length} resolved
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setDiffModal(true)}
+            className="font-mono text-[9px] text-zinc-500 hover:text-zinc-200 transition-colors"
+          >
+            View diff →
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* ── Diff detail modal ── */}
+    {diffModal && diff && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div className="border border-zinc-700 bg-zinc-950 w-full max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
+          <div className="border-b border-zinc-800 px-5 py-3 flex items-center justify-between sticky top-0 bg-zinc-950">
+            <span className="font-mono text-[10px] text-zinc-300 tracking-widest">MISSION DIFF — {priorDateStr.toUpperCase()} vs NOW</span>
+            <button onClick={() => setDiffModal(false)} className="text-zinc-600 hover:text-zinc-300">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-5 space-y-5">
+            {(diff.new_findings?.length ?? 0) > 0 && (
+              <div>
+                <p className="font-mono text-[9px] text-green-400 tracking-widest mb-2">NEW FINDINGS</p>
+                {diff.new_findings!.map((f, i) => (
+                  <div key={i} className="flex items-start gap-2 mb-2">
+                    <span className="font-mono text-[9px] text-green-500 shrink-0 mt-0.5">NEW</span>
+                    <p className="text-xs text-zinc-300 leading-relaxed">{f}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {(diff.resolved_findings?.length ?? 0) > 0 && (
+              <div>
+                <p className="font-mono text-[9px] text-zinc-500 tracking-widest mb-2">RESOLVED / NO LONGER SURFACED</p>
+                {diff.resolved_findings!.map((f, i) => (
+                  <div key={i} className="flex items-start gap-2 mb-2">
+                    <span className="font-mono text-[9px] text-zinc-600 shrink-0 mt-0.5">OLD</span>
+                    <p className="text-xs text-zinc-600 leading-relaxed line-through">{f}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {diff.prior_summary && (
+              <div className="border-t border-zinc-800 pt-4">
+                <p className="font-mono text-[9px] text-zinc-500 tracking-widest mb-2">PRIOR BRIEF SITUATION</p>
+                <p className="text-xs text-zinc-500 leading-relaxed italic">{diff.prior_summary}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
     <div className="border border-zinc-700 bg-zinc-900/40">
       <div className="border-b border-zinc-700 px-5 py-3 flex items-center justify-between">
         <span className="font-mono text-[10px] text-zinc-400 tracking-widest">
@@ -1098,6 +1261,7 @@ function BattleBriefPanel({
         )}
       </div>
     </div>
+    </>
   )
 }
 
