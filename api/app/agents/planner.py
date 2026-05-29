@@ -24,7 +24,7 @@ Available Bright Data tools:
 - scraper_linkedin Web Scraper API — LinkedIn PERSON profile only (URL must be linkedin.com/in/...).
 - browser_render   Scraping Browser (full JS rendering). Best for: SPAs, dynamic pricing pages.
 
-Mission types:
+Mission types and research focus:
 - account_pulse   GTM intel: competitor moves, funding rounds, leadership changes, product launches
 - supplier_watch  Supply chain: financial health, risk signals, market position, contract risk
 - threat_surface  Security: breach history, CVEs, threat intel, dark web exposure, domain risk
@@ -36,7 +36,7 @@ Rules:
 3. For scraper_linkedin: provide the REAL, EXISTING LinkedIn person profile URL of the company's
    current CEO or founder. Use your training knowledge — do NOT construct or guess URLs.
    Known examples (use these exactly if the target matches):
-     Wix.com      → https://www.linkedin.com/in/avishai-abrahami/
+     Wix.com      → https://www.linkedin.com/in/avishai-abrahami-2730434/
      Shopify      → https://www.linkedin.com/in/tobiasluetke/
      Salesforce   → https://www.linkedin.com/in/marcbenioff/
      Microsoft    → https://www.linkedin.com/in/satyanadella/
@@ -44,10 +44,42 @@ Rules:
      HubSpot      → https://www.linkedin.com/in/yamini-rangan/
      Atlassian    → https://www.linkedin.com/in/scottfarquhar/
      Figma        → https://www.linkedin.com/in/dylanfield/
+     TSMC         → https://www.linkedin.com/in/cc-wei-90b8b41b1/
+     Uber         → https://www.linkedin.com/in/dkhosrowshahi/
+     Anthropic    → https://www.linkedin.com/in/dario-amodei-3934934/
+     OpenAI       → https://www.linkedin.com/in/samaltman/
+     NVIDIA       → https://www.linkedin.com/in/jenhsunhuang/
+     ASML         → https://www.linkedin.com/in/christophefouquet/
+     Lyft         → https://www.linkedin.com/in/davidrisher/
+     Stripe       → https://www.linkedin.com/in/patrickcollison/
    For other targets, use the actual CEO's LinkedIn URL from your knowledge.
-4. For browser_render: target a dynamic page (pricing, careers, app dashboard).
-5. For unlocker_fetch: target a page that is likely behind bot protection (press/news page, paywalled).
-6. Queries and URLs must be specific to the actual target — no placeholders.
+4. For browser_render: choose a dynamic page appropriate to the mission type:
+   - account_pulse  → the target's /pricing page (live pricing tiers, packaging changes)
+   - supplier_watch → the target's investor relations or /investors page (financial data, IR calendar)
+   - threat_surface → the target's /security or /trust or /safety page (bug bounty, disclosure policy)
+   For known companies where the IR/security URL is non-standard, use the real URL:
+     TSMC supplier_watch   → https://investor.tsmc.com/english
+     Uber threat_surface   → https://www.uber.com/global/en/safety/
+     ASML supplier_watch   → https://www.asml.com/en/investors/
+5. For unlocker_fetch: target a page likely behind bot protection (press/news, paywalled IR filings).
+   For threat_surface, prefer company security advisory pages or government enforcement records.
+   Do NOT use haveibeenpwned.com/DomainSearch — it requires authentication and returns an auth wall.
+6. For threat_surface missions, SERP queries MUST be target-anchored. Use keyword-based patterns
+   (do NOT use compound site: operators — they break SERP). Generate at least 2 of:
+   - Security press:
+     `{target} data breach hack security incident bleepingcomputer securityweek krebs 2022 2023 2024`
+   - Historical incidents (include all years back to 2020):
+     `{target} hack breach credentials leaked 2020 2021 2022 2023 2024 2025`
+   - Bug bounty and disclosure:
+     `{target} bug bounty HackerOne vulnerability disclosure responsible disclosure`
+   - Regulatory and enforcement:
+     `{target} FTC SEC GDPR data breach fine settlement enforcement lawsuit`
+   - Named threat actors (if applicable):
+     `{target} Lapsus ransomware supply chain attack APT threat actor`
+   DO NOT use site:nvd.nist.gov — NVD indexes software CVEs, not company incidents.
+   DO NOT use compound site: operators (site:A.com OR site:B.com) — use plain keywords instead.
+   NEVER produce queries that omit the target name.
+7. Queries and URLs must be specific to the actual target — no placeholders.
 
 Output ONLY a JSON array — no markdown fences, no explanation:
 [
@@ -66,8 +98,10 @@ _REQUIRED_PRODUCTS: dict[str, set[str]] = {
 }
 
 
+# FIX 1 — expanded known CEO LinkedIn URLs.
 _KNOWN_CEOS: dict[str, str] = {
-    "wix": "https://www.linkedin.com/in/avishai-abrahami/",
+    # Verified originals
+    "wix": "https://www.linkedin.com/in/avishai-abrahami-2730434/",
     "shopify": "https://www.linkedin.com/in/tobiasluetke/",
     "salesforce": "https://www.linkedin.com/in/marcbenioff/",
     "microsoft": "https://www.linkedin.com/in/satyanadella/",
@@ -76,7 +110,6 @@ _KNOWN_CEOS: dict[str, str] = {
     "meta": "https://www.linkedin.com/in/markzuckerberg/",
     "apple": "https://www.linkedin.com/in/timcook/",
     "netflix": "https://www.linkedin.com/in/reedhastings/",
-    "uber": "https://www.linkedin.com/in/dkhos/",
     "airbnb": "https://www.linkedin.com/in/brianchesky/",
     "hubspot": "https://www.linkedin.com/in/yamini-rangan/",
     "zendesk": "https://www.linkedin.com/in/mikklane/",
@@ -85,6 +118,34 @@ _KNOWN_CEOS: dict[str, str] = {
     "notion": "https://www.linkedin.com/in/ivanzhao/",
     "stripe": "https://www.linkedin.com/in/patrickcollison/",
     "twilio": "https://www.linkedin.com/in/jeffielmayer/",
+    # New — high-confidence additions
+    "tsmc": "https://www.linkedin.com/in/cc-wei-90b8b41b1/",       # CC Wei, TSMC CEO
+    "uber": "https://www.linkedin.com/in/dkhosrowshahi/",           # Dara Khosrowshahi
+    "lyft": "https://www.linkedin.com/in/davidrisher/",             # David Risher
+    "anthropic": "https://www.linkedin.com/in/dario-amodei-3934934/",  # Dario Amodei
+    "openai": "https://www.linkedin.com/in/samaltman/",             # Sam Altman
+    "nvidia": "https://www.linkedin.com/in/jenhsunhuang/",          # Jensen Huang
+    "asml": "https://www.linkedin.com/in/christophefouquet/",       # Christophe Fouquet
+    # TODO: verify before using — excluded from active dict for now
+    # "samsung": "https://www.linkedin.com/in/jaeyong-lee-31a83b1a4/"  # Lee Jae-yong
+    # "snowflake": "https://www.linkedin.com/in/sridhar-ramaswamy-9b21/"  # Sridhar Ramaswamy
+}
+
+
+# FIX 2 — hard-coded IR / security pages for companies with non-standard URL conventions.
+_KNOWN_IR_PAGES: dict[str, str] = {
+    "tsmc": "https://investor.tsmc.com/english",
+    "asml": "https://www.asml.com/en/investors/",
+    "samsung": "https://ir.samsung.com/english/",
+    "intel": "https://www.intc.com/investor-relations",
+    "nvidia": "https://investor.nvidia.com/",
+}
+
+_KNOWN_TRUST_PAGES: dict[str, str] = {
+    "uber": "https://transparency.uber.com",        # public transparency report, JS-rendered
+    "lyft": "https://www.lyft.com/safety",
+    "airbnb": "https://www.airbnb.com/trust",
+    "meta": "https://about.fb.com/news/tag/security/",
 }
 
 
@@ -97,10 +158,33 @@ def _target_domain(target: str) -> str:
     return domain
 
 
+def _domain_slug(domain: str) -> str:
+    """Normalize domain to a plain slug for dict lookups.
+
+    'tsmc.com' → 'tsmc', 'uber.com' → 'uber', 'openai.ai' → 'openai'
+    """
+    slug = domain.lower()
+    for ext in (".com", ".io", ".co", ".net", ".org", ".ai", ".tech", ".app"):
+        slug = slug.replace(ext, "")
+    return slug.replace(".", "-").strip("-")
+
+
 def _linkedin_url_for(domain: str) -> str:
-    """Return a known-working LinkedIn CEO URL, or a reasonable slug as fallback."""
-    slug = domain.replace(".com", "").replace(".io", "").replace(".co", "").replace(".", "-")
+    """Return a known-working LinkedIn CEO URL, or a slug-based fallback."""
+    slug = _domain_slug(domain)
     return _KNOWN_CEOS.get(slug, f"https://www.linkedin.com/in/{slug}-ceo/")
+
+
+def _browser_url_for_mission(domain: str, mission_type: str) -> str:
+    """Return the most relevant dynamic page for the mission type."""
+    slug = _domain_slug(domain)
+    base = f"https://www.{domain}"
+    if mission_type == "account_pulse":
+        return f"{base}/pricing"
+    elif mission_type == "supplier_watch":
+        return _KNOWN_IR_PAGES.get(slug, f"{base}/investors")
+    else:  # threat_surface
+        return _KNOWN_TRUST_PAGES.get(slug, f"{base}/security")
 
 
 def _ensure_all_products(
@@ -118,7 +202,6 @@ def _ensure_all_products(
 
     domain = _target_domain(target)
     base_url = f"https://www.{domain}"
-    name_slug = domain.replace(".com", "").replace(".", "-")
     step_num = len(plan) + 1
 
     default_steps: dict[str, ResearchStep] = {
@@ -147,7 +230,7 @@ def _ensure_all_products(
                 if mission_type == "account_pulse"
                 else f"{base_url}/investors"
                 if mission_type == "supplier_watch"
-                else f"https://haveibeenpwned.com/DomainSearch/{domain}"
+                else f"{base_url}/newsroom"  # company newsroom for security announcements
             ),
             "result": None,
             "ok": None,
@@ -162,13 +245,9 @@ def _ensure_all_products(
         },
         "scraping_browser": {
             "step": step_num,
-            "goal": f"Render {target} dynamic page for JS-rendered competitive data",
+            "goal": f"Render {target} dynamic page for mission-relevant JS-rendered data",
             "tool": "browser_render",
-            "query_or_url": (
-                f"{base_url}/pricing"
-                if mission_type in ("account_pulse", "supplier_watch")
-                else f"{base_url}/security"
-            ),
+            "query_or_url": _browser_url_for_mission(domain, mission_type),
             "result": None,
             "ok": None,
         },
