@@ -22,8 +22,8 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(schedules.router)          # literal /missions/schedules must come before /{mission_id}
 app.include_router(missions.router, prefix="/missions")
-app.include_router(schedules.router)
 app.include_router(briefs.router)
 
 # Inngest serve endpoint — handles webhook delivery from Inngest cloud/dev server.
