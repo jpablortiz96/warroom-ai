@@ -16,6 +16,7 @@ class ScheduleCreate(BaseModel):
     mission_type: str = "account_pulse"
     cron: str = "0 9 * * 1"  # Monday 9am UTC
     label: str | None = None
+    slack_webhook_url: str | None = None
 
 
 @router.get("/missions/schedules")
@@ -36,6 +37,7 @@ async def create_schedule(body: ScheduleCreate) -> dict:
         mission_type=body.mission_type,
         cron=body.cron,
         label=body.label or f"{body.target} {body.mission_type} — {body.cron}",
+        slack_webhook_url=body.slack_webhook_url,
     )
 
     # Fire immediately via Inngest (best-effort — Inngest dev server may not be running).

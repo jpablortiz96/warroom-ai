@@ -271,10 +271,18 @@ def list_schedules() -> list[dict]:
     return result.data or []
 
 
-def insert_schedule(target: str, mission_type: str, cron: str, label: str | None = None) -> dict:
-    row = {"target": target, "mission_type": mission_type.lower(), "cron": cron}
+def insert_schedule(
+    target: str,
+    mission_type: str,
+    cron: str,
+    label: str | None = None,
+    slack_webhook_url: str | None = None,
+) -> dict:
+    row: dict = {"target": target, "mission_type": mission_type.lower(), "cron": cron}
     if label:
         row["label"] = label
+    if slack_webhook_url:
+        row["slack_webhook_url"] = slack_webhook_url
     result = get_supabase().table("mission_schedules").insert(row).execute()
     return result.data[0]
 
@@ -294,8 +302,14 @@ async def alist_schedules() -> list[dict]:
     return await asyncio.to_thread(list_schedules)
 
 
-async def ainsert_schedule(target: str, mission_type: str, cron: str, label: str | None = None) -> dict:
-    return await asyncio.to_thread(insert_schedule, target, mission_type, cron, label)
+async def ainsert_schedule(
+    target: str,
+    mission_type: str,
+    cron: str,
+    label: str | None = None,
+    slack_webhook_url: str | None = None,
+) -> dict:
+    return await asyncio.to_thread(insert_schedule, target, mission_type, cron, label, slack_webhook_url)
 
 
 async def adelete_schedule(schedule_id: str) -> None:

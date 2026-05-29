@@ -19,6 +19,8 @@ import {
   Copy,
   Download,
   Link2,
+  Send,
+  X,
 } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { apiGet, apiPost } from "@/lib/api"
@@ -839,6 +841,12 @@ function BattleBriefPanel({
   const recommended_move = (brief.recommended_move ?? "monitor").toUpperCase()
   const actions = action_pack.actions ?? {}
 
+  const [slackModal, setSlackModal] = useState(false)
+  const [slackUrl, setSlackUrl] = useState(() =>
+    typeof window !== "undefined" ? (localStorage.getItem("warroom_slack_webhook") ?? "") : ""
+  )
+  const [slackSending, setSlackSending] = useState(false)
+
   const handleCopyMarkdown = () => {
     const move = recommended_move
     const lines = [
@@ -907,6 +915,33 @@ function BattleBriefPanel({
       toast.success("Share link copied to clipboard.", { description: full })
     } catch {
       toast.error("Share failed.")
+    }
+  }
+
+  const handleSendSlack = async () => {
+    if (!missionId || !slackUrl.trim()) return
+    localStorage.setItem("warroom_slack_webhook", slackUrl.trim())
+    setSlackSending(true)
+    try {
+      const res = await fetch(`http://localhost:8000/missions/${missionId}/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          webhook_url: slackUrl.trim(),
+          share_base: window.location.origin,
+        }),
+      })
+      if (!res.ok) {
+        const err = (await res.json()) as { detail?: string }
+        toast.error("Slack delivery failed", { description: err.detail ?? "Check webhook URL." })
+        return
+      }
+      toast.success("Brief sent to Slack!")
+      setSlackModal(false)
+    } catch {
+      toast.error("Slack delivery failed.")
+    } finally {
+      setSlackSending(false)
     }
   }
   const moveStyle = MOVE_STYLES[recommended_move] ?? "text-zinc-400 border-zinc-600 bg-zinc-800/40"
@@ -986,7 +1021,7 @@ function BattleBriefPanel({
         )}
 
         {/* Action buttons */}
-        <div className="border-t border-zinc-800 pt-4 flex items-center gap-3">
+        <div className="border-t border-zinc-800 pt-4 flex flex-wrap items-center gap-3">
           <button
             onClick={handleCopyMarkdown}
             className="flex items-center gap-2 font-mono text-[10px] text-zinc-500 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-600 px-3 py-2 transition-colors"
@@ -1008,7 +1043,59 @@ function BattleBriefPanel({
             <Link2 className="h-3 w-3" />
             Share Link
           </button>
+          <button
+            onClick={() => setSlackModal(true)}
+            className="flex items-center gap-2 font-mono text-[10px] text-zinc-500 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-600 px-3 py-2 transition-colors"
+          >
+            <Send className="h-3 w-3" />
+            Send to Slack
+          </button>
         </div>
+
+        {/* Slack webhook modal */}
+        {slackModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+            <div className="border border-zinc-700 bg-zinc-950 w-full max-w-md p-6 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-mono text-[10px] text-zinc-500 tracking-widest mb-1">SLACK DELIVERY</p>
+                  <p className="text-sm font-semibold text-zinc-100">Send Battle Brief to Slack</p>
+                </div>
+                <button onClick={() => setSlackModal(false)} className="text-zinc-600 hover:text-zinc-300">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                Paste a Slack Incoming Webhook URL. The brief will be posted as a formatted Block Kit message.
+                The URL is saved locally in your browser.
+              </p>
+              <input
+                type="url"
+                value={slackUrl}
+                onChange={(e) => setSlackUrl(e.target.value)}
+                placeholder="https://hooks.slack.com/services/T.../B.../..."
+                className="w-full bg-zinc-900 border border-zinc-700 px-3 py-2.5 font-mono text-xs text-zinc-200 placeholder-zinc-700 outline-none focus:border-zinc-500 transition-colors"
+                onKeyDown={(e) => e.key === "Enter" && handleSendSlack()}
+              />
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  onClick={handleSendSlack}
+                  disabled={!slackUrl.trim() || slackSending}
+                  className="flex items-center gap-2 px-4 py-2 bg-zinc-100 text-zinc-900 font-mono text-xs font-semibold hover:bg-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {slackSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  {slackSending ? "Sending…" : "Send Brief"}
+                </button>
+                <button
+                  onClick={() => setSlackModal(false)}
+                  className="font-mono text-xs text-zinc-600 hover:text-zinc-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
