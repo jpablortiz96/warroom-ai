@@ -623,7 +623,7 @@ function ActivePanel({
   bdDetails: BDDetails
   brief: Brief | null
   log: string[]
-  logRef: RefObject<HTMLDivElement>
+  logRef: RefObject<HTMLDivElement | null>
 }) {
   const missionDef = MISSIONS.find((m) => m.type === missionType)!
 
