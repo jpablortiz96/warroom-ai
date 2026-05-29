@@ -19,9 +19,12 @@ Used by: Researcher agent (multi-step agentic navigation, structured site extrac
 """
 
 import asyncio
+import logging
 import os
 
 from app.bright_data.base import BrightDataResponse, elapsed_ms, timer
+
+log = logging.getLogger("brightdata")
 from app.config import settings
 
 # Also re-export search_serp for /missions/hello backward compat.
@@ -87,6 +90,19 @@ async def call_tool(tool_name: str, arguments: dict) -> BrightDataResponse:
                 ]
                 combined = "\n".join(text_parts)
 
+                log.warning(
+                    "brightdata.raw product=mcp_server tool=%s latency_ms=%d result_len=%d result_first_500=%r",
+                    tool_name, ms, len(combined), combined[:500],
+                )
+
+                if not combined.strip():
+                    return BrightDataResponse(
+                        status="empty",
+                        product="mcp_server",
+                        error="MCP tool returned empty result",
+                        latency_ms=ms,
+                    )
+
                 return BrightDataResponse(
                     status="ok",
                     product="mcp_server",
@@ -94,8 +110,12 @@ async def call_tool(tool_name: str, arguments: dict) -> BrightDataResponse:
                     latency_ms=ms,
                 )
     except Exception as exc:
+        log.warning(
+            "brightdata.raw product=mcp_server tool=%s error=%r",
+            tool_name, str(exc)[:200],
+        )
         return BrightDataResponse(
-            status="error",
+            status="failed",
             product="mcp_server",
             error=str(exc),
             latency_ms=elapsed_ms(start),
@@ -142,15 +162,31 @@ class MCPSession:
                 for c in (result.content or [])
                 if hasattr(c, "text") and c.text
             ]
+            combined = "\n".join(text_parts)
+            log.warning(
+                "brightdata.raw product=mcp_server tool=%s latency_ms=%d result_len=%d result_first_500=%r",
+                tool_name, ms, len(combined), combined[:500],
+            )
+            if not combined.strip():
+                return BrightDataResponse(
+                    status="empty",
+                    product="mcp_server",
+                    error="MCP tool returned empty result",
+                    latency_ms=ms,
+                )
             return BrightDataResponse(
                 status="ok",
                 product="mcp_server",
-                data={"tool": tool_name, "result": "\n".join(text_parts)},
+                data={"tool": tool_name, "result": combined},
                 latency_ms=ms,
             )
         except Exception as exc:
+            log.warning(
+                "brightdata.raw product=mcp_server tool=%s error=%r",
+                tool_name, str(exc)[:200],
+            )
             return BrightDataResponse(
-                status="error",
+                status="failed",
                 product="mcp_server",
                 error=str(exc),
                 latency_ms=elapsed_ms(start),

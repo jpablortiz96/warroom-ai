@@ -52,6 +52,8 @@ Rules:
      ASML         → https://www.linkedin.com/in/christophefouquet/
      Lyft         → https://www.linkedin.com/in/davidrisher/
      Stripe       → https://www.linkedin.com/in/patrickcollison/
+     Okta         → https://www.linkedin.com/in/toddmckinnon/
+     Boeing       → https://www.linkedin.com/in/kelly-ortberg/
    For other targets, use the actual CEO's LinkedIn URL from your knowledge.
 4. For browser_render: choose a dynamic page appropriate to the mission type:
    - account_pulse  → the target's /pricing page (live pricing tiers, packaging changes)
@@ -59,8 +61,10 @@ Rules:
    - threat_surface → the target's /security or /trust or /safety page (bug bounty, disclosure policy)
    For known companies where the IR/security URL is non-standard, use the real URL:
      TSMC supplier_watch   → https://investor.tsmc.com/english
-     Uber threat_surface   → https://www.uber.com/global/en/safety/
      ASML supplier_watch   → https://www.asml.com/en/investors/
+     Boeing supplier_watch → https://investors.boeing.com
+     Uber threat_surface   → https://www.uber.com/global/en/safety/
+     Okta threat_surface   → https://trust.okta.com
 5. For unlocker_fetch: target a page likely behind bot protection (press/news, paywalled IR filings).
    For threat_surface, prefer company security advisory pages or government enforcement records.
    Do NOT use haveibeenpwned.com/DomainSearch — it requires authentication and returns an auth wall.
@@ -79,7 +83,13 @@ Rules:
    DO NOT use site:nvd.nist.gov — NVD indexes software CVEs, not company incidents.
    DO NOT use compound site: operators (site:A.com OR site:B.com) — use plain keywords instead.
    NEVER produce queries that omit the target name.
-7. Queries and URLs must be specific to the actual target — no placeholders.
+7. SERP query length hard limit: every serp_search and serp_news query must be 8 words or fewer.
+   Long queries (10+ words) return empty results from SERP APIs — keep them short and keyword-dense.
+   BAD:  "Okta Lapsus hack breach credentials leaked HAR file MFA bypass Cloudflare Twilio 2022 2023 2024"
+   GOOD: "Okta Lapsus breach 2022 credentials leaked"
+   BAD:  "Stripe EU UK regulatory compliance pricing changes contract risk 2024 2025"
+   GOOD: "Stripe regulatory EU UK compliance 2024"
+8. Queries and URLs must be specific to the actual target — no placeholders.
 
 Output ONLY a JSON array — no markdown fences, no explanation:
 [
@@ -119,13 +129,15 @@ _KNOWN_CEOS: dict[str, str] = {
     "stripe": "https://www.linkedin.com/in/patrickcollison/",
     "twilio": "https://www.linkedin.com/in/jeffielmayer/",
     # New — high-confidence additions
-    "tsmc": "https://www.linkedin.com/in/cc-wei-90b8b41b1/",       # CC Wei, TSMC CEO
-    "uber": "https://www.linkedin.com/in/dkhosrowshahi/",           # Dara Khosrowshahi
-    "lyft": "https://www.linkedin.com/in/davidrisher/",             # David Risher
+    "tsmc": "https://www.linkedin.com/in/cc-wei-90b8b41b1/",          # CC Wei, TSMC CEO
+    "uber": "https://www.linkedin.com/in/dkhosrowshahi/",              # Dara Khosrowshahi
+    "lyft": "https://www.linkedin.com/in/davidrisher/",                # David Risher
     "anthropic": "https://www.linkedin.com/in/dario-amodei-3934934/",  # Dario Amodei
-    "openai": "https://www.linkedin.com/in/samaltman/",             # Sam Altman
-    "nvidia": "https://www.linkedin.com/in/jenhsunhuang/",          # Jensen Huang
-    "asml": "https://www.linkedin.com/in/christophefouquet/",       # Christophe Fouquet
+    "openai": "https://www.linkedin.com/in/samaltman/",                # Sam Altman
+    "nvidia": "https://www.linkedin.com/in/jenhsunhuang/",             # Jensen Huang
+    "asml": "https://www.linkedin.com/in/christophefouquet/",          # Christophe Fouquet
+    "okta": "https://www.linkedin.com/in/toddmckinnon/",               # Todd McKinnon, Okta CEO
+    "boeing": "https://www.linkedin.com/in/kelly-ortberg/",            # Kelly Ortberg, Boeing CEO (Aug 2024)
     # TODO: verify before using — excluded from active dict for now
     # "samsung": "https://www.linkedin.com/in/jaeyong-lee-31a83b1a4/"  # Lee Jae-yong
     # "snowflake": "https://www.linkedin.com/in/sridhar-ramaswamy-9b21/"  # Sridhar Ramaswamy
@@ -139,13 +151,16 @@ _KNOWN_IR_PAGES: dict[str, str] = {
     "samsung": "https://ir.samsung.com/english/",
     "intel": "https://www.intc.com/investor-relations",
     "nvidia": "https://investor.nvidia.com/",
+    "stripe": "https://stripe.com/newsroom",  # private co; newsroom has IPO/layoff/funding news
+    "boeing": "https://investors.boeing.com",
 }
 
 _KNOWN_TRUST_PAGES: dict[str, str] = {
-    "uber": "https://transparency.uber.com",        # public transparency report, JS-rendered
+    "uber": "https://transparency.uber.com",          # public transparency report, JS-rendered
     "lyft": "https://www.lyft.com/safety",
     "airbnb": "https://www.airbnb.com/trust",
     "meta": "https://about.fb.com/news/tag/security/",
+    "okta": "https://trust.okta.com",                 # Okta's live trust & security status page
 }
 
 

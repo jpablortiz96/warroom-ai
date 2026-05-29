@@ -38,6 +38,36 @@ type Brief = {
 
 // ── Static data ────────────────────────────────────────────────────────────
 
+const PRESETS: {
+  track: string
+  title: string
+  mission: MissionType
+  target: string
+  tagline: string
+}[] = [
+  {
+    track: "TRACK 1 · GTM",
+    title: "Anthropic",
+    mission: "account_pulse",
+    target: "anthropic.com",
+    tagline: "$380B AI giant, dual-cloud distribution — match or fall behind.",
+  },
+  {
+    track: "TRACK 2 · FINANCE",
+    title: "Boeing",
+    mission: "supplier_watch",
+    target: "boeing.com",
+    tagline: "Aerospace supplier under regulatory siege — de-risk now?",
+  },
+  {
+    track: "TRACK 3 · SECURITY",
+    title: "Change Healthcare",
+    mission: "threat_surface",
+    target: "change.unitedhealthgroup.com",
+    tagline: "Healthcare's largest cyber crisis — what's the exposure?",
+  },
+]
+
 const MISSIONS: {
   type: MissionType
   track: string
@@ -114,15 +144,11 @@ export default function WarRoomPage() {
     setLog((prev) => [...prev.slice(-100), line])
   }, [])
 
-  const handleDeploy = async () => {
-    if (!target.trim()) {
-      toast.error("Target required", { description: "Enter a company name or domain." })
-      return
-    }
+  const deployMission = async (missionTarget: string, missionType: MissionType) => {
     try {
       const res = await apiPost<{ mission_id: string }>("/missions/", {
-        mission_type: selected,
-        target: target.trim(),
+        mission_type: missionType,
+        target: missionTarget,
         context: null,
       })
       setMissionId(res.mission_id)
@@ -134,6 +160,20 @@ export default function WarRoomPage() {
         description: err instanceof Error ? err.message : String(err),
       })
     }
+  }
+
+  const handleDeploy = async () => {
+    if (!target.trim()) {
+      toast.error("Target required", { description: "Enter a company name or domain." })
+      return
+    }
+    await deployMission(target.trim(), selected)
+  }
+
+  const handlePresetDeploy = async (presetTarget: string, missionType: MissionType) => {
+    setSelected(missionType)
+    setTarget(presetTarget)
+    await deployMission(presetTarget, missionType)
   }
 
   const startSSE = (id: string) => {
@@ -246,6 +286,7 @@ export default function WarRoomPage() {
             target={target}
             onTargetChange={setTarget}
             onDeploy={handleDeploy}
+            onPresetDeploy={handlePresetDeploy}
           />
         ) : (
           <ActivePanel
@@ -272,12 +313,14 @@ function SetupPanel({
   target,
   onTargetChange,
   onDeploy,
+  onPresetDeploy,
 }: {
   selected: MissionType
   onSelect: (t: MissionType) => void
   target: string
   onTargetChange: (v: string) => void
   onDeploy: () => void
+  onPresetDeploy: (target: string, missionType: MissionType) => void
 }) {
   return (
     <div className="space-y-10">
@@ -287,42 +330,85 @@ function SetupPanel({
         </p>
         <h1 className="text-3xl font-bold tracking-tight text-zinc-100">War Room</h1>
         <p className="text-sm text-zinc-500 mt-1">
-          Select a mission type, enter a target, and deploy the 5-agent pipeline.
+          Select a preset mission or configure a custom target below.
         </p>
       </div>
 
-      {/* Mission type cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {MISSIONS.map((m) => (
-          <button
-            key={m.type}
-            onClick={() => onSelect(m.type)}
-            className={`text-left border p-5 transition-colors ${
-              selected === m.type
-                ? "border-zinc-400 bg-zinc-900/60"
-                : "border-zinc-800 bg-zinc-900/20 hover:border-zinc-700"
-            }`}
-          >
-            <p className="font-mono text-[9px] text-zinc-600 tracking-widest mb-2">
-              {m.track}
-            </p>
-            <p className="font-semibold text-zinc-100 text-sm mb-1.5">{m.name}</p>
-            <p className="text-xs text-zinc-500 leading-relaxed mb-4">{m.description}</p>
-            <div className="flex flex-wrap gap-1">
-              {m.tools.map((t) => (
-                <span
-                  key={t}
-                  className="font-mono text-[9px] px-1.5 py-0.5 border border-zinc-800 text-zinc-600 bg-zinc-900"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          </button>
-        ))}
+      {/* ── Preset mission cards (locked golden paths) ── */}
+      <div className="space-y-3">
+        <p className="font-mono text-[10px] text-zinc-600 tracking-widest">
+          LOCKED GOLDEN PATHS — ONE-TAP DEMO
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {PRESETS.map((p) => (
+            <button
+              key={p.target}
+              onClick={() => onPresetDeploy(p.target, p.mission)}
+              className="group text-left border border-zinc-700 bg-zinc-900/40 p-5 hover:border-zinc-500 hover:bg-zinc-900/70 transition-all cursor-pointer"
+            >
+              <p className="font-mono text-[9px] text-zinc-500 tracking-widest mb-3">
+                {p.track}
+              </p>
+              <p className="font-bold text-zinc-100 text-base mb-0.5">{p.title}</p>
+              <p className="font-mono text-[9px] text-zinc-600 tracking-widest mb-3">
+                {p.mission.toUpperCase().replace("_", " ")}
+              </p>
+              <p className="text-xs text-zinc-500 italic leading-relaxed mb-4">
+                "{p.tagline}"
+              </p>
+              <div className="flex items-center gap-1 font-mono text-[10px] text-zinc-500 group-hover:text-zinc-300 transition-colors">
+                Deploy agents
+                <ChevronRight className="h-3 w-3" />
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Target input */}
+      {/* ── Divider ── */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1 h-px bg-zinc-800" />
+        <span className="font-mono text-[10px] text-zinc-700 tracking-widest">
+          OR CUSTOM MISSION
+        </span>
+        <div className="flex-1 h-px bg-zinc-800" />
+      </div>
+
+      {/* ── Mission type selector ── */}
+      <div className="space-y-3">
+        <p className="font-mono text-[10px] text-zinc-600 tracking-widest">MISSION TYPE</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {MISSIONS.map((m) => (
+            <button
+              key={m.type}
+              onClick={() => onSelect(m.type)}
+              className={`text-left border p-5 transition-colors ${
+                selected === m.type
+                  ? "border-zinc-400 bg-zinc-900/60"
+                  : "border-zinc-800 bg-zinc-900/20 hover:border-zinc-700"
+              }`}
+            >
+              <p className="font-mono text-[9px] text-zinc-600 tracking-widest mb-2">
+                {m.track}
+              </p>
+              <p className="font-semibold text-zinc-100 text-sm mb-1.5">{m.name}</p>
+              <p className="text-xs text-zinc-500 leading-relaxed mb-4">{m.description}</p>
+              <div className="flex flex-wrap gap-1">
+                {m.tools.map((t) => (
+                  <span
+                    key={t}
+                    className="font-mono text-[9px] px-1.5 py-0.5 border border-zinc-800 text-zinc-600 bg-zinc-900"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Target input ── */}
       <div className="border border-zinc-800 bg-zinc-900/20">
         <div className="border-b border-zinc-800 px-5 py-2.5">
           <span className="font-mono text-[10px] text-zinc-600 tracking-widest">

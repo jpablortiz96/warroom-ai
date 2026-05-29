@@ -142,6 +142,44 @@ def get_brief_by_mission(mission_id: UUID | str) -> dict | None:
     return result.data if isinstance(result.data, dict) else result.data[0]
 
 
+# ── Scraper cache ─────────────────────────────────────────────────────────────
+
+def get_scraper_cache(target_url: str, dataset_id: str, max_age_hours: int = 24) -> dict | None:
+    """Return cached snapshot data if younger than max_age_hours, else None."""
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=max_age_hours)).isoformat()
+    result = (
+        get_supabase()
+        .table("scraper_cache")
+        .select("data, snapshot_id, created_at")
+        .eq("target_url", target_url)
+        .eq("dataset_id", dataset_id)
+        .gte("created_at", cutoff)
+        .maybe_single()
+        .execute()
+    )
+    return result.data if result.data else None
+
+
+def set_scraper_cache(target_url: str, dataset_id: str, snapshot_id: str, data: dict | list) -> None:
+    """Upsert a successful snapshot into the cache."""
+    get_supabase().table("scraper_cache").upsert({
+        "target_url": target_url,
+        "dataset_id": dataset_id,
+        "snapshot_id": snapshot_id,
+        "data": data,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }).execute()
+
+
+async def aget_scraper_cache(target_url: str, dataset_id: str) -> dict | None:
+    return await asyncio.to_thread(get_scraper_cache, target_url, dataset_id)
+
+
+async def aset_scraper_cache(target_url: str, dataset_id: str, snapshot_id: str, data: dict | list) -> None:
+    await asyncio.to_thread(set_scraper_cache, target_url, dataset_id, snapshot_id, data)
+
+
 # ── Citations ─────────────────────────────────────────────────────────────────
 
 def insert_citations(citations: list[dict]) -> list[dict]:

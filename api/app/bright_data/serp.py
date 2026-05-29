@@ -6,6 +6,7 @@ Trigger:  brd_json=1 in the Google/Bing URL → returns structured JSON
 Response: {"organic": [{"title": "...", "link": "...", "description": "..."}, ...]}
 """
 
+import logging
 import urllib.parse
 
 from app.bright_data.base import (
@@ -18,6 +19,26 @@ from app.bright_data.base import (
 from app.config import settings
 
 _ENDPOINT = "https://api.brightdata.com/request"
+log = logging.getLogger("brightdata")
+
+
+def _classify_serp(resp_status: int, body: str, data: dict, product: str, ms: int, limit: int) -> BrightDataResponse:
+    """Classify a SERP response into ok / empty / failed."""
+    log.warning(
+        "brightdata.raw product=%s status_code=%d latency_ms=%d body_first_500=%r",
+        product, resp_status, ms, body[:500],
+    )
+
+    # Body-level error field beats HTTP 200.
+    if "error" in data:
+        return BrightDataResponse(
+            status="failed",
+            product=product,
+            error=f"API error: {data['error']}",
+            latency_ms=ms,
+        )
+
+    return None  # caller handles ok/empty
 
 
 async def search(
@@ -49,9 +70,40 @@ async def search(
                 },
             )
             ms = elapsed_ms(start)
-            resp.raise_for_status()
+            body = resp.text
+
+            log.warning(
+                "brightdata.raw product=serp_api tool=serp_search status_code=%d latency_ms=%d body_first_500=%r",
+                resp.status_code, ms, body[:500],
+            )
+
+            if resp.status_code >= 400:
+                return BrightDataResponse(
+                    status="failed",
+                    product="serp_api",
+                    error=f"HTTP {resp.status_code}: {body[:300]}",
+                    latency_ms=ms,
+                )
+
             data = resp.json()
+
+            if "error" in data:
+                return BrightDataResponse(
+                    status="failed",
+                    product="serp_api",
+                    error=f"API error: {data['error']}",
+                    latency_ms=ms,
+                )
+
             organic: list[dict] = data.get("organic", [])
+            if not organic:
+                return BrightDataResponse(
+                    status="empty",
+                    product="serp_api",
+                    error=f"No organic results. Full body: {body[:300]}",
+                    latency_ms=ms,
+                )
+
             return BrightDataResponse(
                 status="ok",
                 product="serp_api",
@@ -60,12 +112,11 @@ async def search(
             )
     except Exception as exc:
         import httpx
-        status = "error"
         err = str(exc)
         if isinstance(exc, httpx.HTTPStatusError):
             err = f"HTTP {exc.response.status_code}: {exc.response.text[:300]}"
         return BrightDataResponse(
-            status=status,
+            status="failed",
             product="serp_api",
             error=err,
             latency_ms=elapsed_ms(start),
@@ -92,15 +143,51 @@ async def search_news(query: str, limit: int = 10) -> BrightDataResponse:
                 },
             )
             ms = elapsed_ms(start)
-            resp.raise_for_status()
+            body = resp.text
+
+            log.warning(
+                "brightdata.raw product=serp_api tool=serp_news status_code=%d latency_ms=%d body_first_500=%r",
+                resp.status_code, ms, body[:500],
+            )
+
+            if resp.status_code >= 400:
+                return BrightDataResponse(
+                    status="failed",
+                    product="serp_api",
+                    error=f"HTTP {resp.status_code}: {body[:300]}",
+                    latency_ms=ms,
+                )
+
             data = resp.json()
+
+            if "error" in data:
+                return BrightDataResponse(
+                    status="failed",
+                    product="serp_api",
+                    error=f"API error: {data['error']}",
+                    latency_ms=ms,
+                )
+
             news = data.get("news", data.get("organic", []))
+            if not news:
+                return BrightDataResponse(
+                    status="empty",
+                    product="serp_api",
+                    error=f"No news results. Full body: {body[:300]}",
+                    latency_ms=ms,
+                )
+
             return BrightDataResponse(
-                status="ok", product="serp_api", data=news[:limit], latency_ms=ms
+                status="ok",
+                product="serp_api",
+                data=news[:limit],
+                latency_ms=ms,
             )
     except Exception as exc:
         return BrightDataResponse(
-            status="error", product="serp_api", error=str(exc),
+            status="failed",
+            product="serp_api",
+            error=str(exc),
             latency_ms=elapsed_ms(start),
         )
 

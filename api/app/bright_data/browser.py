@@ -11,8 +11,11 @@ Windows uvicorn loop-policy NotImplementedError that breaks async Playwright.
 """
 
 import asyncio
+import logging
 
 from app.bright_data.base import BrightDataResponse, elapsed_ms, timer
+
+log = logging.getLogger("brightdata")
 from app.config import settings
 
 _CDP_HOST = "brd.superproxy.io"
@@ -94,11 +97,24 @@ async def fetch_rendered(
             timeout_ms,
             screenshot_path,
         )
+        html = data.get("html", "")
+        ms = elapsed_ms(start)
+        log.warning(
+            "brightdata.raw product=scraping_browser tool=browser_render latency_ms=%d html_len=%d html_first_500=%r",
+            ms, len(html), html[:500],
+        )
+        if len(html) < 500:
+            return BrightDataResponse(
+                status="empty",
+                product="scraping_browser",
+                error=f"Page rendered but suspiciously short ({len(html)} chars): {html[:300]}",
+                latency_ms=ms,
+            )
         return BrightDataResponse(
             status="ok",
             product="scraping_browser",
             data=data,
-            latency_ms=elapsed_ms(start),
+            latency_ms=ms,
         )
     except Exception as exc:
         return BrightDataResponse(

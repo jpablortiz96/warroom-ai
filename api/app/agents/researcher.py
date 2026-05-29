@@ -22,11 +22,12 @@ _PRODUCT_MAP: dict[str, str] = {
 }
 
 # Per-product timeout budgets (seconds).
+# web_scraper_api: LinkedIn snapshots legitimately take 1-3 minutes server-side.
 _PRODUCT_TIMEOUT: dict[str, float] = {
     "serp_api": 15.0,
-    "mcp_server": 15.0,
+    "mcp_server": 20.0,
     "web_unlocker": 30.0,
-    "web_scraper_api": 45.0,
+    "web_scraper_api": 160.0,  # 150s internal budget + 10s overhead
     "scraping_browser": 35.0,
 }
 
@@ -87,7 +88,7 @@ async def _execute(step: ResearchStep) -> tuple[str, BDCall]:
         elif tool == "scraper_linkedin":
             dataset_id = settings.bright_data_scraper_dataset_id
             if not dataset_id:
-                result_text = "[LinkedIn scraper skipped: BRIGHT_DATA_SCRAPER_DATASET_ID not set]"
+                result_text = None  # dataset_id not configured — report as empty, not ok
             else:
                 r = await scraper_api.collect_and_wait(dataset_id, [{"url": q}])
                 latency_ms = r.latency_ms
@@ -109,15 +110,16 @@ async def _execute(step: ResearchStep) -> tuple[str, BDCall]:
     except Exception as exc:
         result_text = f"[Error in {tool}: {exc}]"
 
-    ok = bool(result_text and len(result_text.strip()) > 10)
     product = _PRODUCT_MAP.get(tool, "unknown")
 
-    if not result_text or len(result_text.strip()) <= 10:
+    # Derive status from content quality.
+    # Client-level "failed" / "empty" errors are surfaced via result_text prefix.
+    has_content = bool(result_text and len(result_text.strip()) > 50)
+    ok = has_content
+    if not has_content:
         bd_status = "empty"
-    elif ok:
-        bd_status = "ok"
     else:
-        bd_status = "failed"
+        bd_status = "ok"
 
     bd_call: BDCall = {
         "product": product,

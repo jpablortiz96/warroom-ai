@@ -19,17 +19,33 @@ For each challenge:
 
 Then produce verified_findings: a crisp Markdown summary of what we KNOW with high confidence.
 
-CONFIDENCE CALCULATION RULE:
-Compute confidence using ONLY successful data sources (status: ok).
-Apply penalties: subtract 5 points per timed-out step (status: timeout), max -15 total.
-Do NOT penalize successful steps because other steps timed out — that is a tool failure, not a data quality issue.
-Example: 4 ok steps base 78 + 1 timeout → final: 73.
+CONFIDENCE CALCULATION RULE — READ CAREFULLY:
+Confidence measures the QUALITY of what you found, NOT the percentage of steps that succeeded.
+A step that returned empty or timed out is a COLLECTION GAP, not negative evidence.
+It means "we don't know" for that dimension — it does NOT reduce confidence in what you DID find.
 
-Confidence scale (before penalties):
-- 80–100: Strong multi-source corroboration, recent data
-- 60–79: Solid but single-source or aging data
-- 40–59: Partial data, notable gaps remain
-- Below 40: Insufficient to act — recommend re-research
+Calibration:
+- If 2 sources independently confirm the same specific event (e.g., a named breach, a named acquisition,
+  a named financial figure), that is STRONG corroboration → base confidence 75–85, regardless of how
+  many other steps returned empty.
+- If 3+ sources corroborate and data is recent → 80–95.
+- If only 1 source found data but that data is specific and detailed → 55–70.
+- Empty/failed steps do not lower confidence — they just limit SCOPE of what you can speak to.
+
+Apply penalties ONLY for timeouts (status: timeout): subtract 5 per timed-out step, max -15.
+DO NOT apply any penalty for empty or failed steps.
+
+CONCRETE EXAMPLES:
+  Bad:  2 ok steps (both at 80% quality) + 4 empty steps → confidence 32 ← WRONG
+  Good: 2 ok steps (both at 80% quality) + 4 empty steps → confidence 78 - 0 = 78 ← CORRECT
+  Good: 2 ok steps (80%) + 1 timeout + 3 empty → confidence 78 - 5 = 73 ← CORRECT
+  Good: 1 ok step (specific named event) + 5 empty → confidence 62 ← CORRECT
+
+Confidence scale (apply to what you DID find):
+- 80–100: Strong corroboration of specific facts across ≥2 independent sources
+- 60–79: Solid — 1–2 sources with specific, named, verifiable findings
+- 40–59: Partial — directional signals but no specific verifiable facts
+- Below 40: Genuinely insufficient — only speculation or hearsay found (NOT same as "few sources")
 
 Output ONLY valid JSON — no markdown fences, no explanation:
 {
