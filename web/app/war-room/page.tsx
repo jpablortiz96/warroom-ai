@@ -10,6 +10,11 @@ import {
   Loader2,
   ChevronRight,
   RefreshCw,
+  Search,
+  Globe,
+  ShieldCheck,
+  FileText,
+  Monitor,
 } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { apiPost } from "@/lib/api"
@@ -21,7 +26,14 @@ type Phase = "setup" | "running" | "complete" | "failed"
 type AgentStatus = "idle" | "running" | "complete" | "failed"
 
 type AgentState = { status: AgentStatus; message: string }
-type BDCounts = Record<string, number>
+
+type BDProductDetail = {
+  count: number
+  totalLatencyMs: number
+  lastGoal: string
+  lastStatus: string  // "ok" | "empty" | "failed" | "timeout" | ""
+}
+type BDDetails = Record<string, BDProductDetail>
 
 type Brief = {
   market_move_score: number
@@ -101,12 +113,16 @@ const MISSIONS: {
 const AGENTS = ["planner", "researcher", "skeptic", "verifier", "commander"] as const
 type AgentName = (typeof AGENTS)[number]
 
-const BD_PRODUCTS = [
-  { key: "serp_api", label: "SERP API" },
-  { key: "mcp_server", label: "MCP Server" },
-  { key: "web_unlocker", label: "Web Unlocker" },
-  { key: "web_scraper_api", label: "Scraper API" },
-  { key: "scraping_browser", label: "Browser" },
+const BD_PRODUCTS: {
+  key: string
+  label: string
+  Icon: React.ElementType
+}[] = [
+  { key: "serp_api", label: "SERP API", Icon: Search },
+  { key: "mcp_server", label: "MCP Server", Icon: Globe },
+  { key: "web_unlocker", label: "Web Unlocker", Icon: ShieldCheck },
+  { key: "web_scraper_api", label: "Scraper API", Icon: FileText },
+  { key: "scraping_browser", label: "Browser", Icon: Monitor },
 ]
 
 const MOVE_STYLES: Record<string, string> = {
@@ -122,6 +138,8 @@ const INITIAL_AGENTS = (): Record<AgentName, AgentState> =>
     AGENTS.map((a) => [a, { status: "idle" as AgentStatus, message: "" }])
   ) as Record<AgentName, AgentState>
 
+const EMPTY_BD_DETAILS = (): BDDetails => ({})
+
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function WarRoomPage() {
@@ -130,7 +148,7 @@ export default function WarRoomPage() {
   const [target, setTarget] = useState("")
   const [missionId, setMissionId] = useState<string | null>(null)
   const [agents, setAgents] = useState<Record<AgentName, AgentState>>(INITIAL_AGENTS)
-  const [bdCounts, setBdCounts] = useState<BDCounts>({})
+  const [bdDetails, setBdDetails] = useState<BDDetails>(EMPTY_BD_DETAILS)
   const [brief, setBrief] = useState<Brief | null>(null)
   const [log, setLog] = useState<string[]>([])
   const logRef = useRef<HTMLDivElement>(null)
@@ -182,13 +200,14 @@ export default function WarRoomPage() {
 
     es.addEventListener("agent_event", (e: MessageEvent) => {
       try {
-        const d = JSON.parse(e.data as string)
-        const { agent, event_type, message, bright_data_product } = d as {
+        const d = JSON.parse(e.data as string) as {
           agent: string
           event_type: string
           message: string
           bright_data_product: string | null
+          payload?: Record<string, unknown>
         }
+        const { agent, event_type, message, bright_data_product, payload } = d
 
         setAgents((prev) => {
           const next = { ...prev }
@@ -204,11 +223,26 @@ export default function WarRoomPage() {
           return next
         })
 
-        if (bright_data_product && event_type === "tool_call") {
-          setBdCounts((prev) => ({
-            ...prev,
-            [bright_data_product]: (prev[bright_data_product] ?? 0) + 1,
-          }))
+        if (bright_data_product) {
+          if (event_type === "tool_call") {
+            // Capture call count + last goal (strip "Step N: " prefix).
+            const goal = message.replace(/^Step \d+:\s*/, "")
+            setBdDetails((prev) => {
+              const ex = prev[bright_data_product] ?? { count: 0, totalLatencyMs: 0, lastGoal: "", lastStatus: "" }
+              return { ...prev, [bright_data_product]: { ...ex, count: ex.count + 1, lastGoal: goal } }
+            })
+          } else if (event_type === "tool_result") {
+            // Capture latency + status from payload.
+            const latency = typeof payload?.latency_ms === "number" ? payload.latency_ms : 0
+            const status = typeof payload?.status === "string" ? payload.status : ""
+            setBdDetails((prev) => {
+              const ex = prev[bright_data_product] ?? { count: 0, totalLatencyMs: 0, lastGoal: "", lastStatus: "" }
+              return {
+                ...prev,
+                [bright_data_product]: { ...ex, totalLatencyMs: ex.totalLatencyMs + latency, lastStatus: status },
+              }
+            })
+          }
         }
 
         const tag = agent.toUpperCase().padEnd(10)
@@ -243,7 +277,7 @@ export default function WarRoomPage() {
     setMissionId(null)
     setBrief(null)
     setLog([])
-    setBdCounts({})
+    setBdDetails(EMPTY_BD_DETAILS())
     setAgents(INITIAL_AGENTS())
   }
 
@@ -294,7 +328,7 @@ export default function WarRoomPage() {
             missionType={selected}
             target={target}
             agents={agents}
-            bdCounts={bdCounts}
+            bdDetails={bdDetails}
             brief={brief}
             log={log}
             logRef={logRef}
@@ -354,7 +388,7 @@ function SetupPanel({
                 {p.mission.toUpperCase().replace("_", " ")}
               </p>
               <p className="text-xs text-zinc-500 italic leading-relaxed mb-4">
-                "{p.tagline}"
+                &ldquo;{p.tagline}&rdquo;
               </p>
               <div className="flex items-center gap-1 font-mono text-[10px] text-zinc-500 group-hover:text-zinc-300 transition-colors">
                 Deploy agents
@@ -444,7 +478,7 @@ function ActivePanel({
   missionType,
   target,
   agents,
-  bdCounts,
+  bdDetails,
   brief,
   log,
   logRef,
@@ -453,13 +487,12 @@ function ActivePanel({
   missionType: MissionType
   target: string
   agents: Record<AgentName, AgentState>
-  bdCounts: BDCounts
+  bdDetails: BDDetails
   brief: Brief | null
   log: string[]
   logRef: RefObject<HTMLDivElement>
 }) {
   const missionDef = MISSIONS.find((m) => m.type === missionType)!
-  const totalBDCalls = Object.values(bdCounts).reduce((a, b) => a + b, 0)
 
   return (
     <div className="space-y-6">
@@ -498,74 +531,158 @@ function ActivePanel({
         </div>
       </div>
 
-      {/* Two-column: live log + BD counter */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Live log */}
-        <div className="border border-zinc-800 bg-zinc-900/20 flex flex-col">
-          <div className="border-b border-zinc-800 px-5 py-2.5 flex items-center justify-between">
-            <span className="font-mono text-[10px] text-zinc-600 tracking-widest">
-              LIVE FEED
-            </span>
-            {phase === "running" && (
-              <Loader2 className="h-3 w-3 text-zinc-600 animate-spin" />
-            )}
-          </div>
-          <div
-            ref={logRef}
-            className="flex-1 overflow-y-auto p-4 font-mono text-[10px] text-zinc-500 space-y-0.5 max-h-72"
-          >
-            {log.length === 0 ? (
-              <span className="text-zinc-800">Waiting for events…</span>
-            ) : (
-              log.map((line, i) => (
-                <div key={i} className="leading-5 whitespace-pre-wrap break-all">
-                  {line}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+      {/* Bright Data showcase panel — full width */}
+      <BDShowcasePanel bdDetails={bdDetails} phase={phase} />
 
-        {/* Bright Data counter */}
-        <div className="border border-zinc-800 bg-zinc-900/20">
-          <div className="border-b border-zinc-800 px-5 py-2.5 flex items-center justify-between">
-            <span className="font-mono text-[10px] text-zinc-600 tracking-widest">
-              BRIGHT DATA COVERAGE
-            </span>
-            <span className="font-mono text-[10px] text-zinc-600">
-              {totalBDCalls} CALLS
-            </span>
-          </div>
-          <div className="p-4 space-y-2">
-            {BD_PRODUCTS.map(({ key, label }) => {
-              const count = bdCounts[key] ?? 0
-              return (
-                <div key={key} className="flex items-center gap-3">
-                  <span className="font-mono text-[10px] text-zinc-600 w-28 shrink-0">
-                    {label}
-                  </span>
-                  <div className="flex-1 h-1 bg-zinc-900 rounded-none overflow-hidden">
-                    <div
-                      className="h-full bg-zinc-400 transition-all duration-500"
-                      style={{ width: count > 0 ? `${Math.min(count * 20, 100)}%` : "0%" }}
-                    />
-                  </div>
-                  <span
-                    className={`font-mono text-[10px] w-5 text-right ${
-                      count > 0 ? "text-zinc-300" : "text-zinc-800"
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+      {/* Live log — full width below BD panel */}
+      <div className="border border-zinc-800 bg-zinc-900/20 flex flex-col">
+        <div className="border-b border-zinc-800 px-5 py-2.5 flex items-center justify-between">
+          <span className="font-mono text-[10px] text-zinc-600 tracking-widest">
+            LIVE FEED
+          </span>
+          {phase === "running" && (
+            <Loader2 className="h-3 w-3 text-zinc-600 animate-spin" />
+          )}
+        </div>
+        <div
+          ref={logRef}
+          className="overflow-y-auto p-4 font-mono text-[10px] text-zinc-500 space-y-0.5 max-h-56"
+        >
+          {log.length === 0 ? (
+            <span className="text-zinc-800">Waiting for events…</span>
+          ) : (
+            log.map((line, i) => (
+              <div key={i} className="leading-5 whitespace-pre-wrap break-all">
+                {line}
+              </div>
+            ))
+          )}
         </div>
       </div>
 
       {/* Battle Brief (appears when complete) */}
       {phase === "complete" && brief && <BattleBriefPanel brief={brief} />}
+    </div>
+  )
+}
+
+// ── Bright Data showcase panel ─────────────────────────────────────────────
+
+function BDShowcasePanel({ bdDetails, phase }: { bdDetails: BDDetails; phase: Phase }) {
+  const totalCalls = BD_PRODUCTS.reduce((sum, p) => sum + (bdDetails[p.key]?.count ?? 0), 0)
+  const productsLive = BD_PRODUCTS.filter((p) => (bdDetails[p.key]?.count ?? 0) > 0).length
+
+  return (
+    <div className="border border-zinc-700 bg-zinc-900/40">
+      {/* Panel header */}
+      <div className="border-b border-zinc-700 px-5 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {/* Bright Data wordmark placeholder */}
+          <span className="font-mono text-[10px] font-bold tracking-widest text-zinc-100 bg-zinc-800 px-2 py-0.5 border border-zinc-600">
+            BD
+          </span>
+          <span className="font-mono text-[10px] text-zinc-300 tracking-widest">
+            Powered by Bright Data — All 5 products live
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="font-mono text-[10px] text-zinc-500">
+            {productsLive}/5 active
+          </span>
+          <span className="font-mono text-[10px] text-zinc-500">
+            {totalCalls} total calls
+          </span>
+          {phase === "running" && (
+            <span className="flex items-center gap-1.5 font-mono text-[10px] text-amber-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse block" />
+              LIVE
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* 5 product cards */}
+      <div className="grid grid-cols-5 divide-x divide-zinc-800">
+        {BD_PRODUCTS.map(({ key, label, Icon }) => {
+          const detail = bdDetails[key]
+          const count = detail?.count ?? 0
+          const latencyMs = detail?.totalLatencyMs ?? 0
+          const lastGoal = detail?.lastGoal ?? ""
+          const lastStatus = detail?.lastStatus ?? ""
+          const isActive = count > 0
+
+          const statusDot =
+            lastStatus === "ok"
+              ? "bg-green-500"
+              : lastStatus === "empty"
+              ? "bg-amber-500"
+              : lastStatus === "failed" || lastStatus === "timeout"
+              ? "bg-red-500"
+              : "bg-zinc-700"
+
+          return (
+            <div
+              key={key}
+              className="group relative flex flex-col gap-3 p-4 hover:bg-zinc-800/40 transition-colors"
+            >
+              {/* Icon + status dot */}
+              <div className="flex items-center justify-between">
+                <Icon
+                  className={`h-4 w-4 ${isActive ? "text-zinc-300" : "text-zinc-700"}`}
+                />
+                {isActive && (
+                  <span className={`w-1.5 h-1.5 rounded-full block ${statusDot}`} />
+                )}
+              </div>
+
+              {/* Product label */}
+              <p className={`font-mono text-[9px] tracking-widest ${isActive ? "text-zinc-400" : "text-zinc-700"}`}>
+                {label}
+              </p>
+
+              {/* Call count — large */}
+              <p className={`font-mono text-2xl font-bold ${isActive ? "text-zinc-100" : "text-zinc-800"}`}>
+                {count}
+              </p>
+
+              {/* Latency */}
+              <p className="font-mono text-[9px] text-zinc-600">
+                {isActive ? `${(latencyMs / 1000).toFixed(1)}s total` : "—"}
+              </p>
+
+              {/* Last goal — truncated, monospace */}
+              <p className="font-mono text-[9px] text-zinc-700 truncate" title={lastGoal}>
+                {lastGoal || "—"}
+              </p>
+
+              {/* Hover tooltip — full goal */}
+              {isActive && lastGoal && (
+                <div className="pointer-events-none absolute bottom-full left-0 mb-2 z-10 w-64 hidden group-hover:block">
+                  <div className="border border-zinc-600 bg-zinc-900 p-3 shadow-xl">
+                    <p className="font-mono text-[9px] text-zinc-500 tracking-widest mb-1">
+                      LAST CALL
+                    </p>
+                    <p className="font-mono text-[10px] text-zinc-300 leading-relaxed break-words">
+                      {lastGoal}
+                    </p>
+                    {lastStatus && (
+                      <p className={`font-mono text-[9px] mt-2 tracking-widest ${
+                        lastStatus === "ok" ? "text-green-400" :
+                        lastStatus === "empty" ? "text-amber-400" : "text-red-400"
+                      }`}>
+                        STATUS: {lastStatus.toUpperCase()}
+                      </p>
+                    )}
+                    <p className="font-mono text-[9px] text-zinc-600 mt-1">
+                      {latencyMs}ms cumulative
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -576,7 +693,6 @@ function AgentRow({ name, state }: { name: AgentName; state: AgentState }) {
   const { status, message } = state
   return (
     <div className="flex items-center gap-4 px-1 py-1.5">
-      {/* Status icon */}
       <div className="w-4 shrink-0 flex justify-center">
         {status === "idle" && (
           <span className="w-1.5 h-1.5 rounded-full bg-zinc-800 block" />
@@ -591,8 +707,6 @@ function AgentRow({ name, state }: { name: AgentName; state: AgentState }) {
           <XCircle className="h-3.5 w-3.5 text-red-500" />
         )}
       </div>
-
-      {/* Agent name */}
       <span
         className={`font-mono text-xs w-24 shrink-0 font-semibold ${
           status === "idle"
@@ -606,8 +720,6 @@ function AgentRow({ name, state }: { name: AgentName; state: AgentState }) {
       >
         {name.toUpperCase()}
       </span>
-
-      {/* Latest message */}
       <span className="font-mono text-[11px] text-zinc-600 truncate">
         {status === "idle" ? "—" : message}
       </span>
@@ -619,7 +731,6 @@ function AgentRow({ name, state }: { name: AgentName; state: AgentState }) {
 
 function BattleBriefPanel({ brief }: { brief: Brief }) {
   const { market_move_score, confidence_score, action_pack } = brief
-  // DB stores lowercase; display always uppercase for tactical readability.
   const recommended_move = (brief.recommended_move ?? "monitor").toUpperCase()
   const moveStyle = MOVE_STYLES[recommended_move] ?? "text-zinc-400 border-zinc-600 bg-zinc-800/40"
   const scoreColor =
@@ -634,7 +745,6 @@ function BattleBriefPanel({ brief }: { brief: Brief }) {
 
   return (
     <div className="border border-zinc-700 bg-zinc-900/40">
-      {/* Header */}
       <div className="border-b border-zinc-700 px-5 py-3 flex items-center justify-between">
         <span className="font-mono text-[10px] text-zinc-400 tracking-widest">
           EXECUTIVE BATTLE BRIEF
@@ -645,7 +755,6 @@ function BattleBriefPanel({ brief }: { brief: Brief }) {
       </div>
 
       <div className="p-6 space-y-6">
-        {/* Score + Move */}
         <div className="flex items-start gap-8">
           <div className="text-center">
             <div className={`font-mono text-5xl font-bold ${scoreColor}`}>
@@ -667,7 +776,6 @@ function BattleBriefPanel({ brief }: { brief: Brief }) {
           </div>
         </div>
 
-        {/* Headline + Situation */}
         {action_pack.headline && (
           <div>
             <p className="font-mono text-[9px] text-zinc-600 tracking-widest mb-2">
@@ -684,26 +792,12 @@ function BattleBriefPanel({ brief }: { brief: Brief }) {
           </div>
         )}
 
-        {/* Action Pack */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <ActionColumn
-            label="IMMEDIATE"
-            items={actions.immediate ?? []}
-            accentClass="text-red-400"
-          />
-          <ActionColumn
-            label="THIS WEEK"
-            items={actions.this_week ?? []}
-            accentClass="text-amber-400"
-          />
-          <ActionColumn
-            label="WATCH"
-            items={actions.watch ?? []}
-            accentClass="text-sky-400"
-          />
+          <ActionColumn label="IMMEDIATE" items={actions.immediate ?? []} accentClass="text-red-400" />
+          <ActionColumn label="THIS WEEK" items={actions.this_week ?? []} accentClass="text-amber-400" />
+          <ActionColumn label="WATCH" items={actions.watch ?? []} accentClass="text-sky-400" />
         </div>
 
-        {/* Rationale */}
         {action_pack.commander_rationale && (
           <div className="border-t border-zinc-800 pt-4">
             <p className="font-mono text-[9px] text-zinc-600 tracking-widest mb-2">
@@ -737,9 +831,7 @@ function ActionColumn({
         <ul className="space-y-1.5">
           {items.map((item, i) => (
             <li key={i} className="flex items-start gap-2">
-              <span className={`font-mono text-[10px] mt-0.5 shrink-0 ${accentClass}`}>
-                →
-              </span>
+              <span className={`font-mono text-[10px] mt-0.5 shrink-0 ${accentClass}`}>→</span>
               <span className="text-xs text-zinc-400 leading-relaxed">{item}</span>
             </li>
           ))}
