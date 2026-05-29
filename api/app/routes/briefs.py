@@ -16,6 +16,30 @@ router = APIRouter(tags=["briefs"])
 
 # ── PDF generation (fpdf2) ────────────────────────────────────────────────────
 
+_UNICODE_MAP = str.maketrans({
+    "—": "--",   # em dash —
+    "–": "-",    # en dash –
+    "‘": "'",    # left single quote '
+    "’": "'",    # right single quote '
+    "“": '"',    # left double quote "
+    "”": '"',    # right double quote "
+    "…": "...",  # ellipsis …
+    "•": "-",    # bullet •
+    "→": "->",   # right arrow →
+    "·": ".",    # middle dot ·
+    "é": "e",    # e with accent é
+    "à": "a",    # a with accent à
+})
+
+
+def _s(text: str | None) -> str:
+    """Sanitize text to Latin-1 safe ASCII for fpdf2 core fonts."""
+    if not text:
+        return ""
+    text = text.translate(_UNICODE_MAP)
+    return text.encode("latin-1", errors="replace").decode("latin-1")
+
+
 def _generate_pdf(mission: dict, brief: dict) -> bytes:
     from fpdf import FPDF
 
@@ -33,18 +57,18 @@ def _generate_pdf(mission: dict, brief: dict) -> bytes:
         if call.get("ok"):
             product_counts[prod]["ok"] += 1
 
-    target = mission.get("target", "")
-    mission_type = mission.get("mission_type", "").replace("_", " ").upper()
+    target = _s(mission.get("target", ""))
+    mission_type = _s(mission.get("mission_type", "").replace("_", " ").upper())
     mission_id = str(mission.get("id", ""))
     score = brief.get("market_move_score", 0)
-    move = (brief.get("recommended_move") or "MONITOR").upper()
+    move = _s((brief.get("recommended_move") or "MONITOR").upper())
     confidence = brief.get("confidence_score", 0)
-    headline = action_pack.get("headline", "")
-    situation = action_pack.get("situation", "")
-    rationale = action_pack.get("commander_rationale", "")
-    immediate = actions.get("immediate") or []
-    this_week = actions.get("this_week") or []
-    watch = actions.get("watch") or []
+    headline = _s(action_pack.get("headline", ""))
+    situation = _s(action_pack.get("situation", ""))
+    rationale = _s(action_pack.get("commander_rationale", ""))
+    immediate = [_s(x) for x in (actions.get("immediate") or [])]
+    this_week = [_s(x) for x in (actions.get("this_week") or [])]
+    watch = [_s(x) for x in (actions.get("watch") or [])]
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     pdf = FPDF()
