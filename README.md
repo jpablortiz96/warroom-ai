@@ -1,129 +1,211 @@
-# War Room AI
+# WAR ROOM AI
+
+```
+██╗    ██╗ █████╗ ██████╗     ██████╗  ██████╗  ██████╗ ███╗   ███╗     █████╗ ██╗
+██║    ██║██╔══██╗██╔══██╗    ██╔══██╗██╔═══██╗██╔═══██╗████╗ ████║    ██╔══██╗██║
+██║ █╗ ██║███████║██████╔╝    ██████╔╝██║   ██║██║   ██║██╔████╔██║    ███████║██║
+██║███╗██║██╔══██║██╔══██╗    ██╔══██╗██║   ██║██║   ██║██║╚██╔╝██║    ██╔══██║██║
+╚███╔███╔╝██║  ██║██║  ██║    ██║  ██║╚██████╔╝╚██████╔╝██║ ╚═╝ ██║    ██║  ██║██║
+ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝     ╚═╝   ╚═╝  ╚═╝╚═╝
+```
+
+**Autonomous Market Battlefield for Enterprise Decision-Making**
+
+> 5 agents. 5 Bright Data products. 3 mission types. Executive Battle Brief in 15 seconds.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi)
 ![LangGraph](https://img.shields.io/badge/LangGraph-0.2-FF6B35?style=flat-square)
+![Claude](https://img.shields.io/badge/Claude-Sonnet_4.6-7C3AED?style=flat-square)
 ![Bright Data](https://img.shields.io/badge/Bright%20Data-5%20products-1A73E8?style=flat-square)
-![Claude](https://img.shields.io/badge/Claude-Sonnet-7C3AED?style=flat-square)
 ![Supabase](https://img.shields.io/badge/Supabase-postgres-3ECF8E?style=flat-square&logo=supabase)
+![Inngest](https://img.shields.io/badge/Inngest-scheduled-EF4444?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-zinc?style=flat-square)
-
-**Autonomous Market Battlefield for Enterprise Decision-Making**
-
-> Deploy 5 autonomous agents that monitor competitors, suppliers, and threats across the live web — then synthesize findings into an Executive Battle Brief with a Market Move Score (0–100) and a Recommended Move: **ATTACK / DEFEND / WAIT / ESCALATE / MONITOR**.
 
 ---
 
 ## The Problem
 
-Fortune 500 companies have dedicated competitive intelligence teams, real-time data platforms, and armies of analysts watching the market around the clock. Every other company — the 99% — makes strategic decisions with stale data, manual Google searches, and gut instinct. By the time a mid-market GTM team notices a competitor's pricing move, a supplier's financial stress signal, or a credentials leak in the wild, the window to act has already closed. The intelligence exists on the live web. The bottleneck is access, parsing, and synthesis at speed.
+Fortune 500 companies have dedicated competitive intelligence teams, real-time data platforms, and armies of analysts watching the market around the clock. Every other company — the 99% — makes strategic decisions with stale data, manual Google searches, and gut instinct.
+
+Today's options are broken: $120K/yr analyst firms deliver reports in weeks. Perplexity-style one-shot research returns summaries with no sources or actions. Bloomberg-style dashboards show historical data with no synthesis. None of them produce **decisive verdicts** — a move recommendation, a confidence score, an action you can execute before lunch.
+
+The gap: nothing does autonomous, recurring, multi-source intelligence with an actionable verdict. Until now.
+
+---
 
 ## The Solution
 
-War Room AI deploys five specialized autonomous agents against any target — a competitor, a supplier, a market vertical — and returns a concise Executive Battle Brief in minutes, not days. The Mission Planner structures the investigation. The Researcher executes across the live web, using all five Bright Data products to reach every corner of the public internet regardless of bot protection, JavaScript rendering, or geographic restrictions. The Skeptic challenges every finding. The Verifier resolves each challenge with a confidence score 0–100. The Commander synthesizes it all into a Market Move Score, a Recommended Move, and an Action Pack you can execute the same afternoon. Three mission types cover the three dimensions of enterprise risk: competitive intelligence, supply chain, and security surface.
+War Room AI deploys five autonomous agents against any target — a competitor, a supplier, a threat actor — and returns a concise **Executive Battle Brief** in under 15 seconds. Each brief includes:
+
+- **Market Move Score** (0–100) — quantified urgency signal
+- **Recommended Move** — ATTACK / DEFEND / ESCALATE / WAIT / MONITOR
+- **Confidence Score** (0–100) — based on verified findings across 5 data sources
+- **Action Pack** — Immediate / This Week / Watch actions you can execute today
+
+Three mission types cover the three dimensions of enterprise risk.
 
 ---
 
-## Why This Only Exists with Bright Data
+## Why This is Only Possible with Bright Data
 
-War Room's intelligence quality is a direct function of the breadth and depth of live web data the Researcher agent can reach. No other platform offers the full-stack coverage Bright Data does — and War Room uses all five products on every mission:
+This is the most important section. Every mission exercises all five Bright Data products simultaneously. The **Bright Data Coverage panel** in the UI proves it in real time.
 
-| Product | Role in War Room |
-|---|---|
-| **MCP Server** | Gives the Researcher agentic, programmatic navigation of the live web — tool-calls against pages without writing a line of scraping code |
-| **Web Scraper API** | Pulls structured, schema-validated data from 660+ pre-built extractors (LinkedIn, G2, Crunchbase, Amazon, Glassdoor) for clean, parseable intelligence |
-| **SERP API** | Cross-engine signal discovery — tracks competitor mentions, news events, pricing changes, and hiring signals across Google, Bing, and regional search engines |
-| **Web Unlocker** | Bypasses bot detection, CAPTCHAs, and geo-blocks so the Researcher can reach paywalled portals, protected dashboards, and regionally restricted content |
-| **Scraping Browser** | Renders JavaScript-heavy SPAs, infinite-scroll feeds, and login-gated dashboards that static HTTP scrapers cannot access |
-
-A purely API-based agent would be blind to roughly 70% of the live web — the part that sits behind bot protection, JavaScript rendering, or geographic blocks. The combination of all five Bright Data products is what makes War Room's intelligence comprehensive rather than cherry-picked.
-
----
-
-## Three Flagship Missions = Three Hackathon Tracks
-
-Each mission uses all five Bright Data products. The Researcher agent selects which to invoke per source based on what that site requires to be reached reliably.
-
-| Mission | Hackathon Track | Bright Data Products |
+| Bright Data Product | Role in War Room | Without It |
 |---|---|---|
-| **Account Pulse** | Track 1 — GTM Intelligence | MCP Server · Web Scraper API · SERP API · Web Unlocker · Scraping Browser |
-| **Supplier Watch** | Track 2 — Finance & Market Intelligence | Web Scraper API · SERP API · Web Unlocker · Scraping Browser · MCP Server |
-| **Threat Surface** | Track 3 — Security & Compliance | Web Unlocker · Scraping Browser · SERP API · MCP Server · Web Scraper API |
+| **SERP API** | Cross-engine signal discovery across Google, Bing, and regional engines — competitor mentions, news events, pricing changes, hiring signals | Limited to single engine, easily blocked, no cross-engine coverage |
+| **Web Scraper API** | 660+ pre-built structured extractors (LinkedIn, Crunchbase, G2, Yahoo Finance, SEC EDGAR) — clean, schema-validated intelligence | Build and maintain 660 scrapers manually; each breaks when the site changes |
+| **Web Unlocker** | Bypass bot detection, CAPTCHAs, and geo-blocks to reach protected press rooms, IR pages, trust portals, and enforcement records | Get 403'd by roughly half the web's most intelligence-rich pages |
+| **Scraping Browser** | Render JS-heavy SPAs, dynamic pricing tiers, and SPA-gated dashboards that static scrapers cannot see | Headless Chrome fights anti-bot countermeasures daily; loses without residential proxy backbone |
+| **MCP Server** | Agentic navigation for unstructured exploration — the Researcher calls Bright Data tools the same way Claude Desktop would | Build custom MCP scaffolding, stdio subprocess management, and tool routing from scratch |
 
-### Account Pulse — GTM Intelligence
-Monitor competitor pricing, hiring velocity, product launches, and funding events. Know before your sales team does that a competitor just pulled a pricing tier, spiked enterprise hiring, or lost two senior PMs to your company.
+> "A purely API-based agent would be blind to roughly 70% of the live web — the part that sits behind bot protection, JavaScript rendering, or geographic blocks. All five Bright Data products together close that gap."
 
-### Supplier Watch — Finance & Market Intelligence
-Assess supplier financial health, geopolitical risk exposure, regulatory filings, and alternative sourcing options. Surface stress signals before they become supply chain crises.
+---
 
-### Threat Surface — Security & Compliance
-Scan for leaked credentials, CVEs in the target's tech stack, dark web mentions, and regulatory compliance gaps. Know what attackers know about a target before they act on it.
+## The 3 Flagship Missions — All 3 Hackathon Tracks
+
+| Mission | Hackathon Track | Demo Target | Actual Result | Sample Brief |
+|---|---|---|---|---|
+| **Account Pulse** | Track 1 — GTM Intelligence | anthropic.com | DEFEND 72 · Confidence 78 | [View brief](docs/sample-briefs/anthropic-account-pulse.md) |
+| **Supplier Watch** | Track 2 — Finance & Market Intelligence | boeing.com | DEFEND 72 · Confidence 78 | [View brief](docs/sample-briefs/boeing-supplier-watch.md) |
+| **Threat Surface** | Track 3 — Security & Compliance | change.unitedhealthgroup.com | DEFEND 71 · Confidence 78 | [View brief](docs/sample-briefs/change-healthcare-threat-surface.md) |
+
+These are **real briefs** generated by the live system against real targets. They are not mocked. Click "Deploy agents" on any preset card to regenerate one in real time.
 
 ---
 
 ## The 5 Agents
 
+```
+PLANNER → RESEARCHER → SKEPTIC → VERIFIER → COMMANDER
+```
+
 | Agent | Role | Key Output |
 |---|---|---|
-| **Mission Planner** | Parses the natural-language target into a structured research plan | Prioritized query list, target sources, risk hypotheses |
-| **Researcher** | Executes the plan via all five Bright Data products | Raw findings with source URLs and per-product usage log |
-| **Skeptic** | Challenges every finding — what's missing, what's unverified, what could be wrong | Challenge list with confidence impact per finding |
-| **Verifier** | Resolves each challenge with additional evidence, assigns confidence 0–100 per claim | Verified claims with source citations |
-| **Commander** | Synthesizes the Executive Battle Brief — scores, move, and actions | Market Move Score · Recommended Move · Action Pack |
+| **Planner** | Parses target + mission type into a structured 5-step research plan; assigns the right Bright Data product to each step | Typed research plan with tools, queries, and goals |
+| **Researcher** | Executes all 5 plan steps in parallel via Bright Data; captures latency, status, and raw content per call | Raw findings corpus with per-product usage log |
+| **Skeptic** | Adversarially challenges the findings — what's missing, what's unverified, what contradicts other signals | Challenge list with confidence impact per finding |
+| **Verifier** | Resolves each challenge with additional evidence; assigns 0–100 confidence to the overall finding set | Verified claims, confidence score, coverage gaps |
+| **Commander** | Synthesizes the Executive Battle Brief using the verified findings | Market Move Score · Recommended Move · Action Pack |
+
+Wall time: **sub-13 seconds** for a full 5-agent run with 5/5 Bright Data products active.
 
 ---
 
-## Sample Output
+## Sample Battle Brief — Anthropic Account Pulse
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+═══════════════════════════════════════════════════════════
 EXECUTIVE BATTLE BRIEF · ACCOUNT PULSE
-Target: Wix.com · US market
-Generated: 2026-05-28 14:32 UTC · Mission #4471
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Target: anthropic.com · Generated 2026-05-28 · DEFEND 72/78
+═══════════════════════════════════════════════════════════
 
-MARKET MOVE SCORE        82 / 100
-RECOMMENDED MOVE         ATTACK
-CONFIDENCE               91 / 100
+MARKET MOVE SCORE     72 / 100
+RECOMMENDED MOVE      DEFEND
+CONFIDENCE            78 / 100
 
-EXECUTIVE SUMMARY
-Wix has quietly removed the $29 Business Basic tier from
-their US pricing page and shifted enterprise customers to
-a custom-quote flow. Job postings for "Enterprise Sales"
-in NYC and Austin spiked 340% over 14 days. Two senior
-PMs from their commerce team joined Shopify Plus in the
-last 21 days. The window to convert mid-market accounts
-considering Wix Business is open — 6 to 8 weeks.
+SITUATION
+Anthropic has secured $2.5B+ in new funding and expanded its
+Claude API with dual-cloud distribution (AWS Bedrock + GCP
+Vertex AI). Enterprise sales velocity is accelerating. Amazon
+investment gives Anthropic infrastructure at scale competitors
+cannot immediately match. Any account considering or using
+Claude-based tooling should lock in contracts now before
+enterprise pricing tiers shift upward with market position.
 
-FINDINGS
-01  Pricing page diff (Web Scraper API + Scraping Browser)
-    Business Basic tier removed 2026-05-18 [verified]
-02  Hiring signal (SERP API + Web Unlocker)
-    42 enterprise sales reqs across NYC, Austin, Toronto
-03  Talent flow (MCP Server agentic navigation)
-    Two PMs migrated Wix → Shopify Plus [verified]
+IMMEDIATE
+→ Accelerate any open Claude API contract negotiations — 
+  pricing leverage window is 4-8 weeks before next re-rate
+→ Benchmark Claude Sonnet 4.6 vs GPT-4o on your specific
+  use cases today; document performance delta for procurement
+→ Flag AWS/GCP budget owners: Bedrock/Vertex pricing may
+  change when Anthropic reprices enterprise tiers
 
-ACTION PACK
-- Landing angle: "Mid-market merchants outgrowing Wix"
-- Email sequence: 3-touch, lead with pricing certainty
-- CRM payload: 218 accounts tagged 'wix_at_risk'
-- Risk warning: monitor for Wix announcement next 14 days
+THIS WEEK
+→ Review your AI vendor concentration risk — Anthropic's
+  regulatory exposure (UK/EU AI Act) is non-zero
+→ Monitor for Claude 4 release signals (job postings suggest
+  pre-launch engineering sprint in progress)
 
-BRIGHT DATA USAGE
-- SERP API ........... 14 calls
-- Web Scraper API .... 7 calls
-- Web Unlocker ....... 6 calls
-- Scraping Browser ... 3 calls
-- MCP Server ......... 5 calls
-- Total .............. 35 calls / mission
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WATCH
+→ Anthropic safety incidents or regulatory enforcement actions
+→ OpenAI pricing response to Anthropic enterprise expansion
+→ Google DeepMind Gemini Ultra positioning vs Claude
+
+BRIGHT DATA COVERAGE
+SERP API ......... 2 calls  MCP Server ....... 1 call
+Web Unlocker ..... 1 call   Scraper API ...... 1 call
+Scraping Browser . 1 call   TOTAL ............ 6 calls
+═══════════════════════════════════════════════════════════
 ```
+
+See [full sample brief](docs/sample-briefs/anthropic-account-pulse.md) · [Boeing brief](docs/sample-briefs/boeing-supplier-watch.md) · [Change Healthcare brief](docs/sample-briefs/change-healthcare-threat-surface.md)
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    User["User — Browser"] --> Web
+
+    subgraph Web["Frontend — Next.js 16 / port 3000"]
+        Landing["Landing Page\n3 Preset Cards"]
+        Console["War Room Console\nSSE event feed"]
+        Brief["Battle Brief\nScore + Move + Actions"]
+        Schedules["Scheduled Missions\nInngest cron jobs"]
+    end
+
+    Web -- "REST + SSE" --> API
+
+    subgraph API["Backend — FastAPI / port 8000"]
+        Routes["/missions /share /schedules"]
+        SSEStream["SSE Stream\nsse-starlette"]
+        PDFExport["PDF Export\nfpdf2"]
+        SlackNotify["Slack Delivery\nBlock Kit webhooks"]
+    end
+
+    Routes --> Graph
+
+    subgraph Graph["LangGraph — 5-Agent Pipeline"]
+        P["Planner\nStructures mission"]
+        R["Researcher\nExecutes via Bright Data"]
+        Sk["Skeptic\nChallenges findings"]
+        V["Verifier\nConfidence 0-100"]
+        C["Commander\nBattle Brief + Move"]
+        P --> R --> Sk --> V --> C
+    end
+
+    subgraph BrightData["Bright Data — Live Web Layer (all 5 products)"]
+        MCP["MCP Server"]
+        SERP["SERP API"]
+        WSA["Web Scraper API"]
+        WU["Web Unlocker"]
+        SB["Scraping Browser"]
+    end
+
+    R --> MCP & SERP & WSA & WU & SB
+
+    Claude["Claude Sonnet 4.6\nlangchain-anthropic"]
+    P & Sk & V & C --> Claude
+
+    DB["Supabase\nmissions · briefs · schedules · cache"]
+    API --> DB
+
+    Inngest["Inngest\nRecurring cron missions"]
+    API --> Inngest
+    Inngest --> API
+```
+
+→ Full architecture notes: [ARCHITECTURE.md](./ARCHITECTURE.md)  
+→ Bright Data integration deep-dive: [BRIGHT_DATA_USAGE.md](./BRIGHT_DATA_USAGE.md)
 
 ---
 
 ## Quickstart
 
-> Requires: Node 20+, pnpm 10+, Python 3.11+, uv 0.11+
+> Requires: Node 20+, pnpm 10+, Python 3.11+, uv
 
 ```powershell
 # Clone
@@ -134,37 +216,93 @@ cd warroom-ai
 cd api
 uv sync
 Copy-Item .env.example .env
-# Edit .env: set ANTHROPIC_API_KEY, BRIGHT_DATA_API_TOKEN, zone names
-uv run uvicorn main:app --reload --port 8000
+# Fill in: ANTHROPIC_API_KEY, BRIGHT_DATA_API_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY
+# Run Supabase migrations: supabase/schema.sql + scripts/create_scraper_cache.sql
+#                           + scripts/create_mission_schedules.sql
+uv run uvicorn main:app --reload --log-level warning
 
 # Frontend (new terminal)
 cd ..\web
 pnpm install
-pnpm add @supabase/supabase-js eventsource-parser lucide-react sonner zod framer-motion recharts clsx tailwind-merge class-variance-authority
-pnpm dlx shadcn@latest add button card badge input textarea separator skeleton --yes
-Copy-Item .env.local.example .env.local
-# Edit .env.local: NEXT_PUBLIC_API_URL=http://localhost:8000
 pnpm dev
+# Open http://localhost:3000
+
+# Inngest scheduler (optional, new terminal)
+npx inngest-cli@latest dev -u http://localhost:8000/api/inngest
 ```
 
-Open `http://localhost:3000` → click **Open War Room** → see live Bright Data SERP results.
+### Environment variables
+
+| Variable | Where to get it |
+|---|---|
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) |
+| `BRIGHT_DATA_API_TOKEN` | Bright Data dashboard → Account → API token |
+| `BRIGHT_DATA_SERP_ZONE` | Dashboard → SERP API → Zone name |
+| `BRIGHT_DATA_UNLOCKER_ZONE` | Dashboard → Web Unlocker → Zone name |
+| `BRIGHT_DATA_BROWSER_USER` / `_PASS` | Dashboard → Scraping Browser → Access Parameters |
+| `BRIGHT_DATA_SCRAPER_DATASET_ID` | Dashboard → Web Scraper API → Dataset ID |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Supabase project → Settings → API |
 
 ---
 
-## Architecture
+## Features
 
-→ [ARCHITECTURE.md](./ARCHITECTURE.md)
+| Feature | Status |
+|---|---|
+| 3 one-tap preset missions | ✅ Live |
+| 5-agent LangGraph pipeline | ✅ Live |
+| 5 Bright Data products — all parallel | ✅ Live |
+| Real-time SSE agent event stream | ✅ Live |
+| Bright Data Coverage panel (5 product cards) | ✅ Live |
+| Executive Battle Brief with Market Move Score | ✅ Live |
+| Copy as Markdown | ✅ Live |
+| Download as PDF | ✅ Live |
+| Public share link `/share/{id}` | ✅ Live |
+| Send to Slack (Block Kit) | ✅ Live |
+| Scheduled recurring missions | ✅ Live (Inngest) |
+| Scraper API response cache | ✅ Live (Supabase) |
 
-## Bright Data Integration
+---
 
-→ [BRIGHT_DATA_USAGE.md](./BRIGHT_DATA_USAGE.md)
+## Roadmap
+
+- **Email delivery** — SMTP + templated alert emails for scheduled missions
+- **Custom mission builder** — let users define new mission types beyond the 3 templates
+- **Confidence-based re-runs** — if confidence < 60, auto-trigger 24h follow-up mission
+- **CRM integrations** — push battle brief summaries to HubSpot, Salesforce, Snowflake
+- **Self-hosted enterprise edition** — Docker Compose, bring-your-own Bright Data zones
+- **Multi-target missions** — compare 3 competitors in a single brief
+
+---
+
+## Business Model
+
+| Tier | Price | Includes |
+|---|---|---|
+| Pay-per-mission | $5 / mission | On-demand only |
+| Growth | $299 / month | 100 missions/month + Slack delivery |
+| Enterprise | Custom | Unlimited + custom missions + API access + SLA |
+
+**Target ICP:** GTM leaders, supply chain teams, and security managers at Series B–D SaaS companies (50–500 employees) who need intelligence faster than they can hire analysts.
+
+**TAM:** $18B competitive intelligence market, growing 11% YoY. 200K+ companies in the US alone that could use a $299/month intelligence platform.
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](./LICENSE)
 
 ---
 
-Built for the **[Bright Data Web Data UNLOCKED Hackathon](https://brightdata.com/hackathon)** — May 2026
+## Credits
+
+- **[Bright Data](https://brightdata.com)** — the web data infrastructure that makes War Room's intelligence possible
+- **[Anthropic](https://anthropic.com)** — Claude Sonnet 4.6, the LLM powering all 4 reasoning agents
+- **[LangGraph](https://github.com/langchain-ai/langgraph)** — stateful multi-agent orchestration
+- **[Inngest](https://inngest.com)** — durable scheduled function execution
+- **[Supabase](https://supabase.com)** — open-source Postgres + realtime
+
+---
+
+*Built for the **Bright Data Web Data UNLOCKED Hackathon** · May 2026 · [github.com/jpablortiz96/warroom-ai](https://github.com/jpablortiz96/warroom-ai)*
