@@ -18,13 +18,18 @@ _CORS_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8288",   # Inngest dev server
 ]
-# Add production frontend URL from env (set in Railway/Render after Vercel deploy).
+# Add an explicit production frontend URL from env (e.g. a custom domain).
 if _prod := os.getenv("FRONTEND_URL"):
-    _CORS_ORIGINS.append(_prod.rstrip("/"))
+    _CORS_ORIGINS.append(_prod.strip().rstrip("/"))
+
+# Allow any Vercel deployment (production + preview URLs) and localhost via regex.
+# CORSMiddleware echoes the matched origin (never "*"), so allow_credentials works.
+_CORS_REGEX = r"^https://[a-z0-9-]+\.vercel\.app$|^http://localhost:(3000|8288)$"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ORIGINS,
+    allow_origin_regex=_CORS_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
