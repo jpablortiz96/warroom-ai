@@ -26,7 +26,8 @@ import { Logo } from "@/components/shared/logo"
 import { apiGet, apiPost } from "@/lib/api"
 
 // Backend base URL — set NEXT_PUBLIC_API_URL in Vercel to the Render backend URL.
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+// Strip any trailing slash so `${API_BASE}/missions` never becomes a double slash.
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/+$/, "")
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

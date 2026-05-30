@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/+$/, "")
 
 type Brief = {
   market_move_score: number
