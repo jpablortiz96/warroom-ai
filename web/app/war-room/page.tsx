@@ -25,6 +25,9 @@ import {
 import { Logo } from "@/components/shared/logo"
 import { apiGet, apiPost } from "@/lib/api"
 
+// Backend base URL — set NEXT_PUBLIC_API_URL in Vercel to the Render backend URL.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type MissionType = "account_pulse" | "supplier_watch" | "threat_surface"
@@ -259,7 +262,7 @@ export default function WarRoomPage() {
   }
 
   const startSSE = (id: string) => {
-    const es = new EventSource(`http://localhost:8000/missions/${id}/stream`)
+    const es = new EventSource(`${API_BASE}/missions/${id}/stream`)
     esRef.current = es
 
     es.addEventListener("agent_event", (e: MessageEvent) => {
@@ -321,7 +324,7 @@ export default function WarRoomPage() {
       esRef.current = null
       pushLog("─────────────  MISSION COMPLETE  ─────────────")
       try {
-        const r = await fetch(`http://localhost:8000/missions/${id}`)
+        const r = await fetch(`${API_BASE}/missions/${id}`)
         const data = (await r.json()) as { mission: unknown; brief: Brief | null }
         if (data.brief) setBrief(data.brief)
       } catch {
@@ -903,7 +906,7 @@ function BattleBriefPanel({
   useEffect(() => {
     if (!missionId) return
     setDiff(null)
-    fetch(`http://localhost:8000/missions/${missionId}/diff`)
+    fetch(`${API_BASE}/missions/${missionId}/diff`)
       .then((r) => r.json())
       .then((d: MissionDiff) => { if (d.has_prior) setDiff(d) })
       .catch(() => {})
@@ -946,7 +949,7 @@ function BattleBriefPanel({
   const handleDownloadPDF = async () => {
     if (!missionId) return
     try {
-      const res = await fetch(`http://localhost:8000/missions/${missionId}/brief/pdf`)
+      const res = await fetch(`${API_BASE}/missions/${missionId}/brief/pdf`)
       if (!res.ok) {
         const err = (await res.json()) as { detail?: string }
         toast.error("PDF unavailable", { description: err.detail ?? "Check server logs." })
@@ -967,7 +970,7 @@ function BattleBriefPanel({
   const handleShare = async () => {
     if (!missionId) return
     try {
-      const res = await fetch(`http://localhost:8000/missions/${missionId}/brief/share`, {
+      const res = await fetch(`${API_BASE}/missions/${missionId}/brief/share`, {
         method: "POST",
       })
       if (!res.ok) throw new Error()
@@ -985,7 +988,7 @@ function BattleBriefPanel({
     localStorage.setItem("warroom_slack_webhook", slackUrl.trim())
     setSlackSending(true)
     try {
-      const res = await fetch(`http://localhost:8000/missions/${missionId}/notify`, {
+      const res = await fetch(`${API_BASE}/missions/${missionId}/notify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1278,7 +1281,7 @@ function SchedulesPanel({
 }) {
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`http://localhost:8000/missions/schedules/${id}`, { method: "DELETE" })
+      await fetch(`${API_BASE}/missions/schedules/${id}`, { method: "DELETE" })
       toast.success("Schedule removed.")
       onRefresh()
     } catch {
